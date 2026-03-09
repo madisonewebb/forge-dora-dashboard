@@ -1,0 +1,28 @@
+package com.liatrio.dora.exception;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.time.format.DateTimeFormatter;
+import java.util.Map;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(GitHubRateLimitException.class)
+    public ResponseEntity<Map<String, String>> handleRateLimit(GitHubRateLimitException ex) {
+        log.warn("GitHub rate limit exceeded. Resets at: {}", ex.getResetsAt());
+        return ResponseEntity
+                .status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(Map.of(
+                        "error", "GitHub rate limit exceeded",
+                        "resetsAt", DateTimeFormatter.ISO_INSTANT.format(ex.getResetsAt())
+                ));
+    }
+}
