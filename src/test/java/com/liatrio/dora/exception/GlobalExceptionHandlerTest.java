@@ -31,6 +31,14 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.resetsAt").exists());
     }
 
+    @Test
+    void illegalArgumentException_returns400WithJsonBody() throws Exception {
+        mockMvc.perform(get("/test/bad-request"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType("application/json"))
+                .andExpect(jsonPath("$.error").value("days must be 30, 90, or 180"));
+    }
+
     @Configuration
     static class TestConfig {
         @Bean
@@ -49,6 +57,11 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/test/rate-limit")
         public void throwRateLimit() {
             throw new GitHubRateLimitException(Instant.parse("2026-03-09T12:00:00Z"));
+        }
+
+        @GetMapping("/test/bad-request")
+        public void throwBadRequest() {
+            throw new IllegalArgumentException("days must be 30, 90, or 180");
         }
     }
 }

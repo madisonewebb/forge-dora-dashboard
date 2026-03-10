@@ -25,4 +25,12 @@ public class GlobalExceptionHandler {
                         "resetsAt", DateTimeFormatter.ISO_INSTANT.format(ex.getResetsAt())
                 ));
     }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException ex) {
+        log.debug("Bad request: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", ex.getMessage()));
+    }
 }
