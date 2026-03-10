@@ -88,10 +88,10 @@ function App() {
               </>
             ) : (
               <>
-                <MetricCard title="Deployment Frequency" result={data.deploymentFrequency} />
-                <MetricCard title="Lead Time for Changes" result={data.leadTime} />
-                <MetricCard title="Change Failure Rate" result={data.changeFailureRate} />
-                <MetricCard title="MTTR" result={data.mttr} />
+                <MetricCard title="Deployment Frequency" result={data.deploymentFrequency} chartType="line" />
+                <MetricCard title="Lead Time for Changes" result={data.leadTime} chartType="bar" />
+                <MetricCard title="Change Failure Rate" result={data.changeFailureRate} chartType="line" />
+                <MetricCard title="MTTR" result={data.mttr} chartType="bar" />
               </>
             )}
           </div>

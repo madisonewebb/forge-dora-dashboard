@@ -1,7 +1,12 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import MetricCard from './MetricCard'
 import type { MetricResult } from '../types/metrics'
+
+vi.mock('react-chartjs-2', () => ({
+  Line: () => <div data-testid="line-chart" />,
+  Bar: () => <div data-testid="bar-chart" />,
+}))
 
 function buildMetricResult(overrides: Partial<MetricResult> = {}): MetricResult {
   return {
@@ -21,6 +26,7 @@ describe('MetricCard', () => {
       <MetricCard
         title="Deployment Frequency"
         result={buildMetricResult({ value: 2.3, unit: 'deploys/day', band: 'ELITE' })}
+        chartType="line"
       />
     )
     expect(screen.getByText('Deployment Frequency')).toBeInTheDocument()
@@ -33,6 +39,7 @@ describe('MetricCard', () => {
       <MetricCard
         title="Deployment Frequency"
         result={buildMetricResult({ band: 'ELITE' })}
+        chartType="line"
       />
     )
     const badge = screen.getByText('ELITE')
@@ -45,6 +52,7 @@ describe('MetricCard', () => {
       <MetricCard
         title="Change Failure Rate"
         result={buildMetricResult({ band: 'LOW', value: 42.0, unit: '%' })}
+        chartType="line"
       />
     )
     const badge = screen.getByText('LOW')
@@ -63,6 +71,7 @@ describe('MetricCard', () => {
           band: null,
           message: 'No deployment data found',
         })}
+        chartType="bar"
       />
     )
     expect(screen.getByText('MTTR')).toBeInTheDocument()

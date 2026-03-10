@@ -251,7 +251,7 @@ Implement the `MetricCard` component that displays a metric's name, value + unit
 
 ---
 
-### [ ] 4.0 Render Trend Charts with Chart.js
+### [x] 4.0 Render Trend Charts with Chart.js
 
 Add a Chart.js chart below each metric card using the `timeSeries` array from the API. Deployment Frequency and CFR render as line charts; Lead Time and MTTR render as bar charts. Chart color matches the metric's band color. Charts are hidden when `dataAvailable: false`. X-axis shows `MMM D` formatted dates. Charts are responsive.
 
@@ -263,7 +263,7 @@ Add a Chart.js chart below each metric card using the `timeSeries` array from th
 
 #### 4.0 Tasks
 
-- [ ] 4.1 Write `frontend/src/components/TrendChart.test.tsx` (RED). First, add a module mock at the top of the file:
+- [x] 4.1 Write `frontend/src/components/TrendChart.test.tsx` (RED). First, add a module mock at the top of the file:
   ```ts
   vi.mock('react-chartjs-2', () => ({
     Line: ({ 'data-testid': tid }: { 'data-testid'?: string }) => <div data-testid={tid ?? 'line-chart'} />,
@@ -275,8 +275,8 @@ Add a Chart.js chart below each metric card using the `timeSeries` array from th
   - `renders a Bar chart for leadTime`: pass `chartType="bar"` prop; assert `getByTestId('bar-chart')` is in the document.
   - `renders nothing when timeSeries is empty`: pass an empty `timeSeries` array and `dataAvailable={false}`; assert neither `line-chart` nor `bar-chart` is present.
   Tests should fail with a compilation error.
-- [ ] 4.2 Create `frontend/src/components/TrendChart.tsx` as a minimal stub returning `null`. Run the tests — the "renders nothing" test should pass; the others fail.
-- [ ] 4.3 Implement `TrendChart.tsx` fully:
+- [x] 4.2 Create `frontend/src/components/TrendChart.tsx` as a minimal stub returning `null`. Run the tests — the "renders nothing" test should pass; the others fail.
+- [x] 4.3 Implement `TrendChart.tsx` fully:
   - Props: `{ chartType: 'line' | 'bar'; timeSeries: WeekDataPoint[]; color: string; label: string; dataAvailable: boolean }`
   - If `dataAvailable` is false or `timeSeries` is empty: return `null`
   - Register required Chart.js components at the top of the file:
@@ -290,8 +290,8 @@ Add a Chart.js chart below each metric card using the `timeSeries` array from th
   - Options: `responsive: true`, `maintainAspectRatio: true`, no legend, Y-axis `beginAtZero: true`
   - Render `<Line>` or `<Bar>` from `react-chartjs-2` based on `chartType`
   Run `npm test -- TrendChart` — all three tests should go GREEN.
-- [ ] 4.4 Update `MetricCard.tsx` to render a `<TrendChart>` below the value/badge section, passing `chartType` (line for Deployment Frequency and CFR, bar for Lead Time and MTTR), `timeSeries` from `result.timeSeries`, `color` from the band color mapping, `label` as the metric name, and `dataAvailable` from the result.
-- [ ] 4.5 Run `cd frontend && npm test` — all tests GREEN. Take screenshots at desktop width (≥1280px) and mobile width (~375px using browser DevTools device emulation).
+- [x] 4.4 Update `MetricCard.tsx` to render a `<TrendChart>` below the value/badge section, passing `chartType` (line for Deployment Frequency and CFR, bar for Lead Time and MTTR), `timeSeries` from `result.timeSeries`, `color` from the band color mapping, `label` as the metric name, and `dataAvailable` from the result.
+- [x] 4.5 Run `cd frontend && npm test` — all tests GREEN. Take screenshots at desktop width (≥1280px) and mobile width (~375px using browser DevTools device emulation).
 
 ---
 

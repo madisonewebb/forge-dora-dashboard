@@ -1,9 +1,11 @@
 import type { MetricResult, DoraPerformanceBand } from '../types/metrics'
 import SkeletonCard from './SkeletonCard'
+import TrendChart from './TrendChart'
 
 interface MetricCardProps {
   title: string
   result: MetricResult
+  chartType: 'line' | 'bar'
   loading?: boolean
 }
 
@@ -14,7 +16,7 @@ const BAND_COLORS: Record<DoraPerformanceBand, string> = {
   LOW: '#ef4444',
 }
 
-function MetricCard({ title, result, loading }: MetricCardProps) {
+function MetricCard({ title, result, chartType, loading }: MetricCardProps) {
   if (loading) {
     return <SkeletonCard />
   }
@@ -65,6 +67,15 @@ function MetricCard({ title, result, loading }: MetricCardProps) {
           {result.band}
         </span>
       )}
+      <div style={{ marginTop: '1rem' }}>
+        <TrendChart
+          chartType={chartType}
+          timeSeries={result.timeSeries}
+          color={badgeColor}
+          label={title}
+          dataAvailable={result.dataAvailable}
+        />
+      </div>
     </div>
   )
 }
