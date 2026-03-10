@@ -1,7 +1,7 @@
 # DORA Metrics Dashboard — Local Development
 #
-# Spec 01: single backend service via local_resource.
-# Full multi-container Tilt setup (backend + React frontend) is added in Spec 03.
+# Spec 03: multi-container setup — backend + React frontend.
+# Backend runs via Spring Boot maven plugin; frontend hot-reloads via Vite dev server.
 #
 # Usage: tilt up
 
@@ -15,4 +15,11 @@ local_resource(
         failure_threshold = 10,
     ),
     labels = ["backend"],
+)
+
+local_resource(
+    name = "frontend",
+    serve_cmd = "cd frontend && npm run dev -- --port 5173",
+    deps = ["frontend/src/", "frontend/package.json", "frontend/vite.config.ts"],
+    labels = ["frontend"],
 )
