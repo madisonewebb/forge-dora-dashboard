@@ -210,7 +210,7 @@ Implement the landing page form where users enter GitHub `owner/repo`, a PAT, an
 
 ---
 
-### [ ] 3.0 Build Metric Cards with DORA Band Badges
+### [x] 3.0 Build Metric Cards with DORA Band Badges
 
 Implement the `MetricCard` component that displays a metric's name, value + unit, and a color-coded DORA band badge. Render four cards in a responsive 2×2 grid. Show skeleton placeholders while loading. Show "Not enough data" state with the API message when `dataAvailable: false`.
 
@@ -223,14 +223,14 @@ Implement the `MetricCard` component that displays a metric's name, value + unit
 
 #### 3.0 Tasks
 
-- [ ] 3.1 Write `frontend/src/components/MetricCard.test.tsx` (RED). Define a `buildMetricResult` helper that creates a `MetricResult` fixture with sensible defaults. Write four test cases:
+- [x] 3.1 Write `frontend/src/components/MetricCard.test.tsx` (RED). Define a `buildMetricResult` helper that creates a `MetricResult` fixture with sensible defaults. Write four test cases:
   - `renders metric name, value, and unit`: render `<MetricCard title="Deployment Frequency" result={...} />` with a result that has `value: 2.3`, `unit: "deploys/day"`, `band: "ELITE"`, `dataAvailable: true`; assert all three pieces of text are visible.
   - `renders ELITE badge with correct color`: use the ELITE fixture; assert the badge element has `backgroundColor` of `#22c55e` or a CSS class that maps to it.
   - `renders LOW badge with red color #ef4444`: use a LOW fixture; assert the badge color is `#ef4444`.
   - `renders not-enough-data state when dataAvailable is false`: pass a result with `dataAvailable: false` and `message: "No deployment data found"`; assert "Not enough data" heading is visible and the message text is visible; assert the metric value is NOT rendered.
   Tests should fail with a compilation error.
-- [ ] 3.2 Create `frontend/src/components/MetricCard.tsx` as a stub returning `<div></div>`. Run tests — compilation should pass but all assertions fail.
-- [ ] 3.3 Implement `MetricCard.tsx` fully:
+- [x] 3.2 Create `frontend/src/components/MetricCard.tsx` as a stub returning `<div></div>`. Run tests — compilation should pass but all assertions fail.
+- [x] 3.3 Implement `MetricCard.tsx` fully:
   - Props: `{ title: string; result: MetricResult; loading?: boolean }`
   - If `loading` is true: render a `<SkeletonCard />` (created in 3.4)
   - If `result.dataAvailable` is false: render the title, a gray "Not enough data" badge, and `result.message` text
@@ -241,13 +241,13 @@ Implement the `MetricCard` component that displays a metric's name, value + unit
     - `LOW`: `#ef4444`
   - Badge shape: `border-radius: 9999px`, `padding: 2px 10px`, `font-size: 0.75rem`, white text
   Run `npm test -- MetricCard` — all four tests should go GREEN.
-- [ ] 3.4 Create `frontend/src/components/SkeletonCard.tsx` — a `<div>` with a CSS animation (`@keyframes pulse` that oscillates opacity between 0.4 and 1.0) and a fixed height matching a metric card. No tests needed for the skeleton itself.
-- [ ] 3.5 Create CSS (either a `.module.css` file or inline styles) for the 2×2 responsive grid:
+- [x] 3.4 Create `frontend/src/components/SkeletonCard.tsx` — a `<div>` with a CSS animation (`@keyframes pulse` that oscillates opacity between 0.4 and 1.0) and a fixed height matching a metric card. No tests needed for the skeleton itself.
+- [x] 3.5 Create CSS (either a `.module.css` file or inline styles) for the 2×2 responsive grid:
   - Container: `display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;`
   - Responsive: `@media (max-width: 768px) { grid-template-columns: 1fr; }`
   - Card: `background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); padding: 1.5rem;`
-- [ ] 3.6 Update `App.tsx` dashboard view to render four `<MetricCard>` components in the grid using the `MetricsResponse` data from the API, passing the appropriate `MetricResult` for each metric. Pass `loading={true}` to all four cards during the initial fetch (shows skeletons).
-- [ ] 3.7 Run `cd frontend && npm test` — all tests GREEN. Take a screenshot of the four metric cards in the browser.
+- [x] 3.6 Update `App.tsx` dashboard view to render four `<MetricCard>` components in the grid using the `MetricsResponse` data from the API, passing the appropriate `MetricResult` for each metric. Pass `loading={true}` to all four cards during the initial fetch (shows skeletons).
+- [x] 3.7 Run `cd frontend && npm test` — all tests GREEN. Take a screenshot of the four metric cards in the browser.
 
 ---
 
