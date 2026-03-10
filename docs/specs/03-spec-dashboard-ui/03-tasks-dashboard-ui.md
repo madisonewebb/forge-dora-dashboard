@@ -295,7 +295,7 @@ Add a Chart.js chart below each metric card using the `timeSeries` array from th
 
 ---
 
-### [ ] 5.0 Implement Time Window Selector and Error State Banners
+### [x] 5.0 Implement Time Window Selector and Error State Banners
 
 Add a 30/90/180-day segmented control above the metric grid that re-fetches and re-renders on change (with skeleton loading during re-fetch). Implement dismissible error banners for all four API error states: HTTP 429 (rate limit + reset time), HTTP 401/403 (bad token), HTTP 404 (repo not found), and network error. Add a "Change Repository" link that returns the user to the input form.
 
@@ -307,18 +307,18 @@ Add a 30/90/180-day segmented control above the metric grid that re-fetches and 
 
 #### 5.0 Tasks
 
-- [ ] 5.1 Create `frontend/src/hooks/useMetrics.ts` — a custom hook that accepts `{ owner, repo, token, days }` and returns `{ data: MetricsResponse | null, loading: boolean, error: MetricsError | null }`. Define `interface MetricsError { status: number | null; message: string; resetsAt?: string }`. The hook should: call `fetch('/api/metrics?...')` on mount and whenever `days` changes, set `loading: true` at start of each call, parse error responses as JSON to extract `resetsAt` for 429s, and catch `TypeError` (network errors). No test needed for the hook directly — it will be tested via `Dashboard.test.tsx`.
-- [ ] 5.2 Create `frontend/src/components/ErrorBanner.tsx`:
+- [x] 5.1 Create `frontend/src/hooks/useMetrics.ts` — a custom hook that accepts `{ owner, repo, token, days }` and returns `{ data: MetricsResponse | null, loading: boolean, error: MetricsError | null }`. Define `interface MetricsError { status: number | null; message: string; resetsAt?: string }`. The hook should: call `fetch('/api/metrics?...')` on mount and whenever `days` changes, set `loading: true` at start of each call, parse error responses as JSON to extract `resetsAt` for 429s, and catch `TypeError` (network errors). No test needed for the hook directly — it will be tested via `Dashboard.test.tsx`.
+- [x] 5.2 Create `frontend/src/components/ErrorBanner.tsx`:
   - Props: `{ message: string; onDismiss: () => void }`
   - Render: a yellow/red banner `<div>` with the message text and an × dismiss button. Style with `background: #fef2f2`, `border: 1px solid #ef4444`, `border-radius: 6px`, `padding: 1rem`.
-- [ ] 5.3 Write `frontend/src/components/Dashboard.test.tsx` (RED). Mock `globalThis.fetch` in `beforeEach`. Write five test cases:
+- [x] 5.3 Write `frontend/src/components/Dashboard.test.tsx` (RED). Mock `globalThis.fetch` in `beforeEach`. Write five test cases:
   - `renders the 30/90/180 day selector`: render `<Dashboard ... />` with fixture data; assert three buttons/labels "30 days", "90 days", "180 days" are present.
   - `selecting 90 days triggers a new fetch with days=90`: click the "90 days" button; assert `fetch` was called with a URL containing `days=90`.
   - `renders rate-limit banner on HTTP 429`: mock `fetch` to return `{ status: 429, json: () => ({ error: '...', resetsAt: '2026-03-10T12:00:00Z' }) }`; assert banner text contains "rate limit" and "2026-03-10".
   - `renders bad-token banner on HTTP 401`: mock `fetch` to return `{ status: 401 }`; assert banner contains "Invalid or expired GitHub token".
   - `Change Repository link returns to the input form`: render `<Dashboard />` with an `onBack` prop; click "Change Repository"; assert `onBack` was called.
   Tests should fail with a compilation error.
-- [ ] 5.4 Create `frontend/src/components/Dashboard.tsx`:
+- [x] 5.4 Create `frontend/src/components/Dashboard.tsx`:
   - Props: `{ owner: string; repo: string; token: string; initialDays: 30 | 90 | 180; onBack: () => void }`
   - Use `useMetrics` hook with internal `days` state (default from `initialDays`)
   - Render:
@@ -332,9 +332,9 @@ Add a 30/90/180-day segmented control above the metric grid that re-fetches and 
        - `error.status === null` (network): `"Could not reach the server. Check your connection."`
     5. If `data`: render the 2×2 `MetricCard` grid
   Run `npm test -- Dashboard` — all five tests should go GREEN.
-- [ ] 5.5 Update `App.tsx` to replace the "Dashboard coming soon" placeholder with `<Dashboard owner={...} repo={...} token={...} initialDays={...} onBack={() => setView('form')} />`.
-- [ ] 5.6 Run `cd frontend && npm test` — all tests across all five test files GREEN. Run `./mvnw test` from the project root — confirm backend tests are still GREEN (76 pass, 4 skipped).
-- [ ] 5.7 Take the final proof screenshots:
+- [x] 5.5 Update `App.tsx` to replace the "Dashboard coming soon" placeholder with `<Dashboard owner={...} repo={...} token={...} initialDays={...} onBack={() => setView('form')} />`.
+- [x] 5.6 Run `cd frontend && npm test` — all tests across all five test files GREEN. Run `./mvnw test` from the project root — confirm backend tests are still GREEN (76 pass, 4 skipped).
+- [x] 5.7 Take the final proof screenshots:
   - Full dashboard with time window selector visible and data loaded (save to `docs/specs/03-spec-dashboard-ui/03-proofs/dashboard-desktop.png`)
   - Rate-limit error banner (save to `docs/specs/03-spec-dashboard-ui/03-proofs/error-banner-429.png`)
   - Dashboard at 375px mobile width (save to `docs/specs/03-spec-dashboard-ui/03-proofs/dashboard-mobile.png`)
