@@ -64,6 +64,9 @@ function InsightsPanel({ owner, repo, token, days }: InsightsPanelProps) {
   useEffect(() => {
     openStream()
     return () => { abortRef.current?.abort() }
+    // openStream is intentionally omitted: it captures owner/repo/token/days via closure
+    // and recreating it on every render would cause infinite re-fetches
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [owner, repo, token, days])
 
   return (
