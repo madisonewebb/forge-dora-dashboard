@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,13 +30,14 @@ public class MetricsController {
     public ResponseEntity<MetricsResponse> getMetrics(
             @RequestParam String owner,
             @RequestParam String repo,
-            @RequestParam String token,
+            @RequestHeader("Authorization") String authHeader,
             @RequestParam(defaultValue = "30") int days) {
 
         if (!VALID_DAYS.contains(days)) {
             throw new IllegalArgumentException("days must be 30, 90, or 180");
         }
 
+        String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
         log.info("Metrics requested for {}/{} over {} days", owner, repo, days);
         MetricsResponse response = metricsService.getMetrics(owner, repo, token, days);
         return ResponseEntity.ok(response);

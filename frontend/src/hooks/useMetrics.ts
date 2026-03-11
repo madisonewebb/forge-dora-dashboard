@@ -27,7 +27,8 @@ export function useMetrics({ owner, repo, token, days }: UseMetricsParams) {
       setError(null)
       try {
         const res = await fetch(
-          `/api/metrics?owner=${owner}&repo=${repo}&token=${token}&days=${days}`
+          `/api/metrics?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&days=${days}`,
+          { headers: { Authorization: `Bearer ${token}` } }
         )
         if (cancelled) return
 

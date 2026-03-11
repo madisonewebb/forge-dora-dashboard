@@ -40,7 +40,7 @@ class MetricsControllerTest {
         mockMvc.perform(get("/api/metrics")
                         .param("owner", "liatrio")
                         .param("repo", "liatrio")
-                        .param("token", "test-token")
+                        .header("Authorization", "Bearer test-token")
                         .param("days", "30"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.meta.owner").value("liatrio"))
@@ -57,7 +57,7 @@ class MetricsControllerTest {
         mockMvc.perform(get("/api/metrics")
                         .param("owner", "liatrio")
                         .param("repo", "liatrio")
-                        .param("token", "test-token")
+                        .header("Authorization", "Bearer test-token")
                         .param("days", "999"))
                 .andExpect(status().isBadRequest());
     }
@@ -74,7 +74,7 @@ class MetricsControllerTest {
         mockMvc.perform(get("/api/metrics")
                         .param("owner", "liatrio")
                         .param("repo", "liatrio")
-                        .param("token", "test-token"))
+                        .header("Authorization", "Bearer test-token"))
                 .andExpect(status().isOk());
 
         verify(metricsService).getMetrics(eq("liatrio"), eq("liatrio"), anyString(), eq(30));
@@ -92,7 +92,7 @@ class MetricsControllerTest {
         mockMvc.perform(get("/api/metrics")
                         .param("owner", "liatrio")
                         .param("repo", "liatrio")
-                        .param("token", "test-token")
+                        .header("Authorization", "Bearer test-token")
                         .param("days", "90"))
                 .andExpect(status().isOk());
     }

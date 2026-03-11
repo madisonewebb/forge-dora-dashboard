@@ -2,12 +2,12 @@ import { useState } from 'react'
 
 interface RepoFormProps {
   onSubmit: (owner: string, repo: string, token: string, days: number) => void
-  loading: boolean
+  loading?: boolean
 }
 
 const OWNER_REPO_PATTERN = /^[^/]+\/[^/]+$/
 
-function RepoForm({ onSubmit, loading }: RepoFormProps) {
+function RepoForm({ onSubmit, loading = false }: RepoFormProps) {
   const [ownerRepo, setOwnerRepo] = useState('')
   const [token, setToken] = useState('')
   const [days, setDays] = useState<30 | 90 | 180>(30)

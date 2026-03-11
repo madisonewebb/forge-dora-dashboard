@@ -13,33 +13,57 @@ type StreamStatus = 'analyzing' | 'streaming' | 'complete' | 'error'
 function InsightsPanel({ owner, repo, token, days }: InsightsPanelProps) {
   const [content, setContent] = useState('')
   const [status, setStatus] = useState<StreamStatus>('analyzing')
-  const evtSourceRef = useRef<EventSource | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
-  function openStream() {
-    evtSourceRef.current?.close()
+  async function openStream() {
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
     setContent('')
     setStatus('analyzing')
 
-    const url = `/api/insights?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&token=${encodeURIComponent(token)}&days=${days}`
-    const es = new EventSource(url)
-    evtSourceRef.current = es
+    try {
+      const url = `/api/insights?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&days=${days}`
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
+      })
 
-    es.onmessage = (event: MessageEvent) => {
-      setContent(prev => prev + event.data)
+      if (!res.ok || !res.body) {
+        setStatus('error')
+        return
+      }
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
       setStatus('streaming')
-    }
 
-    es.onerror = () => {
-      setStatus(prev => (prev === 'streaming' ? 'complete' : 'error'))
-      es.close()
+      let buffer = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const parts = buffer.split('\n\n')
+        buffer = parts.pop() ?? ''
+        for (const part of parts) {
+          for (const line of part.split('\n')) {
+            if (line.startsWith('data: ')) {
+              setContent(prev => prev + line.slice(6))
+            }
+          }
+        }
+      }
+      setStatus('complete')
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') {
+        setStatus(prev => prev === 'streaming' ? 'complete' : 'error')
+      }
     }
   }
 
   useEffect(() => {
     openStream()
-    return () => {
-      evtSourceRef.current?.close()
-    }
+    return () => { abortRef.current?.abort() }
   }, [owner, repo, token, days])
 
   return (

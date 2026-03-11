@@ -49,7 +49,7 @@ function App() {
 
   return (
     <div style={{ background: '#f9fafb', minHeight: '100vh' }}>
-      <RepoForm onSubmit={handleFormSubmit} loading={false} />
+      <RepoForm onSubmit={handleFormSubmit} />
     </div>
   )
 }

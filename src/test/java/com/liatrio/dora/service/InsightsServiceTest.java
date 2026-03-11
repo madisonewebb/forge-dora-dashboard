@@ -60,7 +60,7 @@ class InsightsServiceTest {
     void streamInsights_callsMetricsServiceAndBuildsPrompt() {
         MetricsResponse fixture = buildFixtureResponse();
         when(metricsService.getMetrics(anyString(), anyString(), anyString(), anyInt())).thenReturn(fixture);
-        when(trendDirectionCalculator.calculate(any())).thenReturn(TrendDirection.STABLE);
+        when(trendDirectionCalculator.calculate(any(), anyBoolean())).thenReturn(TrendDirection.STABLE);
         when(promptBuilder.build(any(), any())).thenReturn(new BuiltPrompt("sys", "user"));
         setupChatClientMock(Flux.just("Hello", " world"));
 
@@ -82,7 +82,7 @@ class InsightsServiceTest {
     void streamInsights_promptContainsMetricData() {
         MetricsResponse fixture = buildFixtureResponse();
         when(metricsService.getMetrics(anyString(), anyString(), anyString(), anyInt())).thenReturn(fixture);
-        when(trendDirectionCalculator.calculate(any())).thenReturn(TrendDirection.STABLE);
+        when(trendDirectionCalculator.calculate(any(), anyBoolean())).thenReturn(TrendDirection.STABLE);
 
         ArgumentCaptor<String> userPromptCaptor = ArgumentCaptor.forClass(String.class);
         when(promptBuilder.build(any(), any())).thenAnswer(inv -> {
