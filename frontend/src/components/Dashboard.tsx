@@ -3,6 +3,7 @@ import { useMetrics } from '../hooks/useMetrics'
 import MetricCard from './MetricCard'
 import SkeletonCard from './SkeletonCard'
 import ErrorBanner from './ErrorBanner'
+import InsightsPanel from './InsightsPanel'
 
 interface DashboardProps {
   owner: string
@@ -105,6 +106,11 @@ function Dashboard({ owner, repo, token, initialDays, onBack }: DashboardProps) 
             </>
           )}
         </div>
+
+        {/* AI Insights Panel — only shown when data is available */}
+        {data && !loading && (
+          <InsightsPanel owner={owner} repo={repo} token={token} days={days} />
+        )}
       </div>
     </div>
   )

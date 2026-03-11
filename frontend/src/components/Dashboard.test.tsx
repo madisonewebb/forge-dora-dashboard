@@ -9,6 +9,10 @@ vi.mock('react-chartjs-2', () => ({
   Bar: () => <div data-testid="bar-chart" />,
 }))
 
+vi.mock('./InsightsPanel', () => ({
+  default: () => <div data-testid="insights-panel" />,
+}))
+
 function makeMetricResult(overrides = {}) {
   return {
     value: 1.5,

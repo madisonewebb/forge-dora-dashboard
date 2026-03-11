@@ -33,4 +33,12 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST)
                 .body(Map.of("error", ex.getMessage()));
     }
+
+    @ExceptionHandler(InsightsUnavailableException.class)
+    public ResponseEntity<Map<String, String>> handleInsightsUnavailable(InsightsUnavailableException ex) {
+        log.warn("AI insights unavailable: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", "AI insights unavailable", "reason", ex.getMessage()));
+    }
 }
