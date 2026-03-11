@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
@@ -32,6 +33,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(WebClientResponseException.class)
+    public ResponseEntity<Map<String, String>> handleGitHubApiError(WebClientResponseException ex) {
+        if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+            log.warn("GitHub API returned 401 — token missing or invalid");
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "GitHub token is invalid or missing"));
+        }
+        log.warn("GitHub API error {}: {}", ex.getStatusCode(), ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_GATEWAY)
+                .body(Map.of("error", "GitHub API error: " + ex.getStatusCode()));
     }
 
     @ExceptionHandler(InsightsUnavailableException.class)
