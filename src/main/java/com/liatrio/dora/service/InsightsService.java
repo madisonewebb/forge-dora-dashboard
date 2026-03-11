@@ -49,10 +49,10 @@ public class InsightsService {
         MetricsResponse metrics = metricsService.getMetrics(owner, repo, token, days);
 
         Map<String, TrendDirection> trends = Map.of(
-                "deploymentFrequency", trendDirection(metrics.deploymentFrequency()),
-                "leadTime", trendDirection(metrics.leadTime()),
-                "changeFailureRate", trendDirection(metrics.changeFailureRate()),
-                "mttr", trendDirection(metrics.mttr())
+                "deploymentFrequency", trendDirection(metrics.deploymentFrequency(), false),
+                "leadTime", trendDirection(metrics.leadTime(), true),
+                "changeFailureRate", trendDirection(metrics.changeFailureRate(), true),
+                "mttr", trendDirection(metrics.mttr(), true)
         );
 
         BuiltPrompt builtPrompt = promptBuilder.build(metrics, trends);
@@ -66,10 +66,10 @@ public class InsightsService {
                 .onErrorMap(ex -> new InsightsUnavailableException("Claude API error: " + ex.getMessage()));
     }
 
-    private TrendDirection trendDirection(MetricResult result) {
+    private TrendDirection trendDirection(MetricResult result, boolean lowerIsBetter) {
         if (!result.dataAvailable()) {
             return TrendDirection.STABLE;
         }
-        return trendDirectionCalculator.calculate(result.timeSeries());
+        return trendDirectionCalculator.calculate(result.timeSeries(), lowerIsBetter);
     }
 }

@@ -8,7 +8,7 @@ import java.util.List;
 @Component
 public class TrendDirectionCalculator {
 
-    public TrendDirection calculate(List<WeekDataPoint> timeSeries) {
+    public TrendDirection calculate(List<WeekDataPoint> timeSeries, boolean lowerIsBetter) {
         if (timeSeries == null || timeSeries.size() < 2) {
             return TrendDirection.STABLE;
         }
@@ -26,13 +26,20 @@ public class TrendDirectionCalculator {
 
         double delta = (secondAvg - firstAvg) / firstAvg;
 
+        TrendDirection direction;
         if (delta > 0.10) {
-            return TrendDirection.IMPROVING;
+            direction = TrendDirection.IMPROVING;
         } else if (delta < -0.10) {
-            return TrendDirection.DECLINING;
+            direction = TrendDirection.DECLINING;
         } else {
             return TrendDirection.STABLE;
         }
+
+        return lowerIsBetter ? invert(direction) : direction;
+    }
+
+    private TrendDirection invert(TrendDirection direction) {
+        return direction == TrendDirection.IMPROVING ? TrendDirection.DECLINING : TrendDirection.IMPROVING;
     }
 
     private double average(List<WeekDataPoint> points) {

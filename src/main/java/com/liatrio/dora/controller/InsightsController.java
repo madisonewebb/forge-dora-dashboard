@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -13,6 +14,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Flux;
 
 import java.io.IOException;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/insights")
@@ -20,6 +22,7 @@ public class InsightsController {
 
     private static final Logger log = LoggerFactory.getLogger(InsightsController.class);
     private static final long SSE_TIMEOUT_MS = 60_000L;
+    private static final Set<Integer> VALID_DAYS = Set.of(30, 90, 180);
 
     private final InsightsService insightsService;
 
@@ -31,11 +34,16 @@ public class InsightsController {
     public SseEmitter getInsights(
             @RequestParam String owner,
             @RequestParam String repo,
-            @RequestParam String token,
+            @RequestHeader("Authorization") String authHeader,
             @RequestParam(defaultValue = "30") int days,
             HttpServletResponse response) {
 
+        if (!VALID_DAYS.contains(days)) {
+            throw new IllegalArgumentException("days must be 30, 90, or 180");
+        }
+
         response.setHeader("Cache-Control", "no-store");
+        String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
         log.info("Streaming insights for {}/{} over {} days", owner, repo, days);
 
         // May throw InsightsUnavailableException synchronously → handled by GlobalExceptionHandler → 503

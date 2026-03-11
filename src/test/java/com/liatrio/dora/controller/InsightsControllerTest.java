@@ -35,7 +35,7 @@ class InsightsControllerTest {
         MvcResult result = mockMvc.perform(get("/api/insights")
                         .param("owner", "liatrio")
                         .param("repo", "liatrio")
-                        .param("token", "abc")
+                        .header("Authorization", "Bearer abc")
                         .param("days", "30"))
                 .andExpect(request().asyncStarted())
                 .andReturn();
@@ -53,7 +53,7 @@ class InsightsControllerTest {
         MvcResult result = mockMvc.perform(get("/api/insights")
                         .param("owner", "liatrio")
                         .param("repo", "liatrio")
-                        .param("token", "abc")
+                        .header("Authorization", "Bearer abc")
                         .param("days", "30"))
                 .andExpect(request().asyncStarted())
                 .andReturn();
@@ -68,6 +68,16 @@ class InsightsControllerTest {
     }
 
     @Test
+    void getInsights_invalidDays_returns400() throws Exception {
+        mockMvc.perform(get("/api/insights")
+                        .param("owner", "liatrio")
+                        .param("repo", "liatrio")
+                        .header("Authorization", "Bearer abc")
+                        .param("days", "999"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void getInsights_insightsUnavailable_returns503() throws Exception {
         when(insightsService.streamInsights(anyString(), anyString(), anyString(), anyInt()))
                 .thenThrow(new InsightsUnavailableException("no key"));
@@ -75,7 +85,7 @@ class InsightsControllerTest {
         mockMvc.perform(get("/api/insights")
                         .param("owner", "liatrio")
                         .param("repo", "liatrio")
-                        .param("token", "abc")
+                        .header("Authorization", "Bearer abc")
                         .param("days", "30"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.error").value("AI insights unavailable"))
