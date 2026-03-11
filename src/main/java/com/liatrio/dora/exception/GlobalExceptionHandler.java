@@ -25,4 +25,20 @@ public class GlobalExceptionHandler {
                         "resetsAt", DateTimeFormatter.ISO_INSTANT.format(ex.getResetsAt())
                 ));
     }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException ex) {
+        log.debug("Bad request: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(InsightsUnavailableException.class)
+    public ResponseEntity<Map<String, String>> handleInsightsUnavailable(InsightsUnavailableException ex) {
+        log.warn("AI insights unavailable: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", "AI insights unavailable", "reason", ex.getMessage()));
+    }
 }

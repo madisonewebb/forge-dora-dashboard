@@ -31,6 +31,23 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.resetsAt").exists());
     }
 
+    @Test
+    void illegalArgumentException_returns400WithJsonBody() throws Exception {
+        mockMvc.perform(get("/test/bad-request"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType("application/json"))
+                .andExpect(jsonPath("$.error").value("days must be 30, 90, or 180"));
+    }
+
+    @Test
+    void insightsUnavailableException_returns503WithJsonBody() throws Exception {
+        mockMvc.perform(get("/test/insights-unavailable"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(content().contentType("application/json"))
+                .andExpect(jsonPath("$.error").value("AI insights unavailable"))
+                .andExpect(jsonPath("$.reason").value("ANTHROPIC_API_KEY is not configured"));
+    }
+
     @Configuration
     static class TestConfig {
         @Bean
@@ -49,6 +66,16 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/test/rate-limit")
         public void throwRateLimit() {
             throw new GitHubRateLimitException(Instant.parse("2026-03-09T12:00:00Z"));
+        }
+
+        @GetMapping("/test/bad-request")
+        public void throwBadRequest() {
+            throw new IllegalArgumentException("days must be 30, 90, or 180");
+        }
+
+        @GetMapping("/test/insights-unavailable")
+        public void throwInsightsUnavailable() {
+            throw new InsightsUnavailableException("ANTHROPIC_API_KEY is not configured");
         }
     }
 }
