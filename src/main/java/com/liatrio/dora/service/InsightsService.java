@@ -62,6 +62,7 @@ public class InsightsService {
                 .user(builtPrompt.userPrompt())
                 .stream()
                 .content()
+                .retry(1)
                 .onErrorMap(ex -> new InsightsUnavailableException("Claude API error: " + ex.getMessage()));
     }
 

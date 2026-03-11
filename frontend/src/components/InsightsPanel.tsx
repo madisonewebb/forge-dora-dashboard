@@ -70,7 +70,10 @@ function InsightsPanel({ owner, repo, token, days }: InsightsPanelProps) {
       </div>
 
       {status === 'analyzing' && (
-        <p style={{ color: '#6b7280', fontStyle: 'italic' }}>Analyzing your metrics...</p>
+        <>
+          <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
+          <p style={{ color: '#6b7280', fontStyle: 'italic', animation: 'pulse 1.5s ease-in-out infinite' }}>Analyzing your metrics...</p>
+        </>
       )}
 
       {(status === 'streaming' || status === 'complete') && (

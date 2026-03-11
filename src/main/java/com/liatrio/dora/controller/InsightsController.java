@@ -1,6 +1,7 @@
 package com.liatrio.dora.controller;
 
 import com.liatrio.dora.service.InsightsService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
@@ -31,8 +32,10 @@ public class InsightsController {
             @RequestParam String owner,
             @RequestParam String repo,
             @RequestParam String token,
-            @RequestParam(defaultValue = "30") int days) {
+            @RequestParam(defaultValue = "30") int days,
+            HttpServletResponse response) {
 
+        response.setHeader("Cache-Control", "no-store");
         log.info("Streaming insights for {}/{} over {} days", owner, repo, days);
 
         // May throw InsightsUnavailableException synchronously → handled by GlobalExceptionHandler → 503
