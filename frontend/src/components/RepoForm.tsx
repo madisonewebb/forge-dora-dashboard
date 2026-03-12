@@ -1,17 +1,18 @@
 import { useState } from 'react'
 
 interface RepoFormProps {
-  onSubmit: (owner: string, repo: string, token: string, days: number) => void
+  onSubmit: (owner: string, repo: string, days: number) => void
+  onLogout: () => void
   loading?: boolean
 }
 
 const OWNER_REPO_PATTERN = /^[^/]+\/[^/]+$/
 
-function RepoForm({ onSubmit, loading = false }: RepoFormProps) {
+export default function RepoForm({ onSubmit, onLogout, loading = false }: RepoFormProps) {
   const [ownerRepo, setOwnerRepo] = useState('')
-  const [token, setToken] = useState('')
   const [days, setDays] = useState<30 | 90 | 180>(30)
   const [error, setError] = useState<string | null>(null)
+  const [focused, setFocused] = useState(false)
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -21,81 +22,202 @@ function RepoForm({ onSubmit, loading = false }: RepoFormProps) {
     }
     setError(null)
     const [owner, repo] = ownerRepo.trim().split('/')
-    onSubmit(owner, repo, token, days)
+    onSubmit(owner, repo, days)
   }
 
   return (
-    <div style={{ maxWidth: 480, margin: '4rem auto', padding: '2rem', background: 'white', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.12)' }}>
-      <h1 style={{ marginBottom: '1.5rem', fontSize: '1.25rem' }}>DORA Metrics Dashboard</h1>
-      <form onSubmit={handleSubmit} noValidate>
-        <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="ownerRepo" style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>
-            Owner/Repo
-          </label>
-          <input
-            id="ownerRepo"
-            type="text"
-            placeholder="liatrio/liatrio"
-            value={ownerRepo}
-            onChange={e => setOwnerRepo(e.target.value)}
-            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6, boxSizing: 'border-box' }}
-          />
-          {error && (
-            <p role="alert" style={{ color: '#ef4444', fontSize: '0.875rem', marginTop: 4 }}>{error}</p>
-          )}
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '2rem',
+      animation: 'fadeUp 0.4s ease both',
+    }}>
+      {/* Header */}
+      <div style={{ marginBottom: '2.5rem', textAlign: 'center' }}>
+        <div style={{
+          fontFamily: 'var(--font-head)',
+          fontSize: '2rem',
+          fontWeight: 800,
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          color: 'var(--text)',
+          lineHeight: 1,
+        }}>
+          DORA METRICS
+        </div>
+      </div>
+
+      {/* Card */}
+      <div style={{
+        width: '100%',
+        maxWidth: 440,
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderRadius: 12,
+        padding: '2rem',
+        boxShadow: '0 0 40px rgba(168,255,53,0.04), 0 20px 60px rgba(0,0,0,0.4)',
+      }}>
+        {/* Card header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <span style={{
+            fontFamily: 'var(--font-head)',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+            color: 'var(--text-muted)',
+          }}>
+            Select Repository
+          </span>
+          <button
+            type="button"
+            onClick={onLogout}
+            style={{
+              background: 'none',
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              color: 'var(--text-muted)',
+              fontFamily: 'var(--font-ui)',
+              fontSize: '0.75rem',
+              padding: '0.25rem 0.625rem',
+              cursor: 'pointer',
+              transition: 'border-color 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => {
+              const el = e.currentTarget
+              el.style.borderColor = 'var(--border2)'
+              el.style.color = 'var(--text)'
+            }}
+            onMouseLeave={e => {
+              const el = e.currentTarget
+              el.style.borderColor = 'var(--border)'
+              el.style.color = 'var(--text-muted)'
+            }}
+          >
+            Logout
+          </button>
         </div>
 
-        <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="token" style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>
-            Personal Access Token
-          </label>
-          <input
-            id="token"
-            type="password"
-            placeholder="ghp_…"
-            value={token}
-            onChange={e => setToken(e.target.value)}
-            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6, boxSizing: 'border-box' }}
-          />
-        </div>
-
-        <fieldset style={{ border: 'none', padding: 0, marginBottom: '1.5rem' }}>
-          <legend style={{ fontWeight: 500, marginBottom: 8 }}>Time Window</legend>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            {([30, 90, 180] as const).map(d => (
-              <label key={d} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                <input
-                  type="radio"
-                  name="days"
-                  value={d}
-                  checked={days === d}
-                  onChange={() => setDays(d)}
-                />
-                {d} days
-              </label>
-            ))}
+        <form onSubmit={handleSubmit} noValidate>
+          {/* Owner/Repo input */}
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label htmlFor="ownerRepo" style={{
+              display: 'block',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '0.6875rem',
+              fontWeight: 500,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: 'var(--text-muted)',
+              marginBottom: '0.5rem',
+            }}>
+              owner/repo
+            </label>
+            <input
+              id="ownerRepo"
+              type="text"
+              placeholder="liatrio/liatrio"
+              value={ownerRepo}
+              onChange={e => setOwnerRepo(e.target.value)}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              autoComplete="off"
+              spellCheck={false}
+              style={{
+                width: '100%',
+                padding: '0.6875rem 0.875rem',
+                background: 'var(--surface2)',
+                border: `1px solid ${focused ? 'var(--lime-dim)' : error ? 'var(--red)' : 'var(--border)'}`,
+                borderRadius: 8,
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.9375rem',
+                color: 'var(--text)',
+                outline: 'none',
+                transition: 'border-color 0.15s',
+                boxSizing: 'border-box',
+              }}
+            />
+            {error && (
+              <p role="alert" style={{
+                marginTop: '0.375rem',
+                fontSize: '0.75rem',
+                color: 'var(--red)',
+                fontFamily: 'var(--font-mono)',
+              }}>
+                ✗ {error}
+              </p>
+            )}
           </div>
-        </fieldset>
 
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: '0.625rem',
-            background: loading ? '#9ca3af' : '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: 6,
-            fontWeight: 600,
-            cursor: loading ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {loading ? 'Loading…' : 'Load Metrics'}
-        </button>
-      </form>
+          {/* Time window */}
+          <div style={{ marginBottom: '1.75rem' }}>
+            <div style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '0.6875rem',
+              fontWeight: 500,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: 'var(--text-muted)',
+              marginBottom: '0.625rem',
+            }}>
+              Time Window
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {([30, 90, 180] as const).map(d => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDays(d)}
+                  style={{
+                    flex: 1,
+                    padding: '0.5rem',
+                    background: days === d ? 'rgba(168,255,53,0.12)' : 'var(--surface2)',
+                    border: `1px solid ${days === d ? 'var(--lime-dim)' : 'var(--border)'}`,
+                    borderRadius: 6,
+                    fontFamily: 'var(--font-head)',
+                    fontSize: '0.875rem',
+                    fontWeight: days === d ? 700 : 400,
+                    letterSpacing: '0.04em',
+                    color: days === d ? 'var(--lime)' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {d}d
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              background: loading ? 'var(--border)' : 'var(--lime)',
+              color: loading ? 'var(--text-muted)' : '#070C1B',
+              border: 'none',
+              borderRadius: 8,
+              fontFamily: 'var(--font-head)',
+              fontSize: '1rem',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'opacity 0.15s, transform 0.15s',
+            }}
+            onMouseEnter={e => { if (!loading) (e.currentTarget.style.opacity = '0.9') }}
+            onMouseLeave={e => { (e.currentTarget.style.opacity = '1') }}
+          >
+            {loading ? 'Loading…' : 'Analyze →'}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }
-
-export default RepoForm

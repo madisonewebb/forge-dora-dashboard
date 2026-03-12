@@ -97,7 +97,7 @@ public class GitHubApiClient {
                 results.add(run);
             }
             if (reachedWindow) break;
-            nextUrl = extractNextUrlFromRaw(response);
+            nextUrl = extractNextUrl(response);
         }
         return results;
     }
@@ -184,6 +184,10 @@ public class GitHubApiClient {
                         .toEntity((Class<List<Map<String, Object>>>) (Class<?>) List.class)
                         .block();
             } catch (WebClientResponseException e) {
+                if (isPaginationStopSignal(e)) {
+                    log.warn("GitHub pagination stopped at {} ({}), returning partial results", url, e.getStatusCode());
+                    return ResponseEntity.ok(List.of());
+                }
                 handleRateLimitError(e, attempt);
             }
         }
@@ -201,10 +205,24 @@ public class GitHubApiClient {
                         .toEntity((Class<Map<String, Object>>) (Class<?>) Map.class)
                         .block();
             } catch (WebClientResponseException e) {
+                if (isPaginationStopSignal(e)) {
+                    log.warn("GitHub pagination stopped at {} ({}), returning partial results", url, e.getStatusCode());
+                    return ResponseEntity.ok(Map.of());
+                }
                 handleRateLimitError(e, attempt);
             }
         }
         throw new GitHubRateLimitException(Instant.now().plusSeconds(3600));
+    }
+
+    /**
+     * Returns true for GitHub responses that mean "stop paginating, use what you have".
+     * 422 = pagination depth limit exceeded (GitHub caps at ~1000 results for some endpoints).
+     * 404 = resource not found (repo has no deployments, actions not enabled, etc.).
+     */
+    private boolean isPaginationStopSignal(WebClientResponseException e) {
+        int status = e.getStatusCode().value();
+        return status == 404 || status == 422;
     }
 
     private void handleRateLimitError(WebClientResponseException e, int attempt) {
@@ -236,10 +254,6 @@ public class GitHubApiClient {
     private String extractNextUrl(ResponseEntity<?> response) {
         String linkHeader = response.getHeaders().getFirst("Link");
         return parseLinkNext(linkHeader);
-    }
-
-    private String extractNextUrlFromRaw(ResponseEntity<?> response) {
-        return extractNextUrl(response);
     }
 
     private String parseLinkNext(String linkHeader) {

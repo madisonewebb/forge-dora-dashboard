@@ -1,0 +1,81 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy to ECS Fargate
+    runs-on: ubuntu-latest
+    environment: production
+    # Only deploy when CI passes — prevents shipping broken builds
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend image
+        id: build-backend
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -f Dockerfile.backend -t $ECR_REGISTRY/dora-backend:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/dora-backend:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/dora-backend:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Build and push frontend image
+        id: build-frontend
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -f frontend/Dockerfile -t $ECR_REGISTRY/dora-frontend:$IMAGE_TAG ./frontend
+          docker push $ECR_REGISTRY/dora-frontend:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/dora-frontend:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Substitute placeholders in task definition
+        env:
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: envsubst < ecs-task-definition.json > ecs-task-definition.rendered.json
+
+      - name: Render task definition with new backend image
+        id: render-backend
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ecs-task-definition.rendered.json
+          container-name: backend
+          image: ${{ steps.build-backend.outputs.image }}
+
+      - name: Render task definition with new frontend image
+        id: render-frontend
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-backend.outputs.task-definition }}
+          container-name: frontend
+          image: ${{ steps.build-frontend.outputs.image }}
+
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-frontend.outputs.task-definition }}
+          service: dora-service
+          cluster: dora-cluster
+          wait-for-service-stability: true

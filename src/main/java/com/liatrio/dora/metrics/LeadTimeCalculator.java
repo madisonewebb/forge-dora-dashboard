@@ -31,24 +31,41 @@ public class LeadTimeCalculator {
     public MetricResult calculate(List<GithubPullRequest> pullRequests,
                                   List<GithubDeployment> deployments,
                                   int windowDays) {
-        if (pullRequests.isEmpty() || deployments.isEmpty()) {
+        if (pullRequests.isEmpty()) {
             return MetricResult.notAvailable("No lead time data available.");
         }
 
-        List<GithubDeployment> sortedDeployments = deployments.stream()
-                .sorted((a, b) -> a.getCreatedAt().compareTo(b.getCreatedAt()))
-                .toList();
+        List<PairData> pairs;
 
-        List<PairData> pairs = new ArrayList<>();
-        for (GithubPullRequest pr : pullRequests) {
-            if (pr.getMergedAt() == null || pr.getFirstCommitAt() == null) continue;
+        if (!deployments.isEmpty()) {
+            // Primary: correlate PR merge → next deployment within 7 days
+            List<GithubDeployment> sortedDeployments = deployments.stream()
+                    .sorted((a, b) -> a.getCreatedAt().compareTo(b.getCreatedAt()))
+                    .toList();
 
-            sortedDeployments.stream()
-                    .filter(d -> d.getCreatedAt().isAfter(pr.getMergedAt()))
-                    .filter(d -> Duration.between(pr.getMergedAt(), d.getCreatedAt())
-                            .compareTo(MAX_CORRELATION_WINDOW) <= 0)
-                    .findFirst()
-                    .ifPresent(d -> pairs.add(new PairData(pr.getFirstCommitAt(), d.getCreatedAt())));
+            pairs = new ArrayList<>();
+            for (GithubPullRequest pr : pullRequests) {
+                if (pr.getMergedAt() == null) continue;
+                // Use firstCommitAt if available, otherwise fall back to PR creation time
+                Instant startTime = pr.getFirstCommitAt() != null ? pr.getFirstCommitAt() : pr.getCreatedAt();
+                if (startTime == null) continue;
+
+                final Instant start = startTime;
+                sortedDeployments.stream()
+                        .filter(d -> d.getCreatedAt().isAfter(pr.getMergedAt()))
+                        .filter(d -> Duration.between(pr.getMergedAt(), d.getCreatedAt())
+                                .compareTo(MAX_CORRELATION_WINDOW) <= 0)
+                        .findFirst()
+                        .ifPresent(d -> pairs.add(new PairData(start, d.getCreatedAt())));
+            }
+        } else {
+            // Fallback: no GitHub Deployments — use PR open → merge as a proxy
+            log.debug("No deployments found; falling back to PR open→merge lead time");
+            pairs = new ArrayList<>();
+            for (GithubPullRequest pr : pullRequests) {
+                if (pr.getMergedAt() == null || pr.getCreatedAt() == null) continue;
+                pairs.add(new PairData(pr.getCreatedAt(), pr.getMergedAt()));
+            }
         }
 
         if (pairs.isEmpty()) {

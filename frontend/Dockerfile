@@ -8,7 +8,12 @@ COPY src ./src
 RUN npm run build
 
 # Stage 2: serve with nginx
+# nginx:alpine automatically runs envsubst on files in /etc/nginx/templates/
+# at container startup, outputting to /etc/nginx/conf.d/ — so BACKEND_HOST
+# is substituted at runtime rather than baked into the image.
 FROM nginx:alpine
-COPY nginx/nginx.conf /etc/nginx/conf.d/default.conf
+RUN addgroup -S app && adduser -S app -G app
+COPY nginx/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=builder /app/dist /usr/share/nginx/html
+RUN chown -R app:app /usr/share/nginx/html
 EXPOSE 80

@@ -4,6 +4,7 @@ import com.liatrio.dora.dto.DoraPerformanceBand;
 import com.liatrio.dora.dto.MetricResult;
 import com.liatrio.dora.dto.WeekDataPoint;
 import com.liatrio.dora.model.GithubDeployment;
+import com.liatrio.dora.model.GithubWorkflowRun;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -21,26 +22,39 @@ public class DeploymentFrequencyCalculator {
 
     private static final Logger log = LoggerFactory.getLogger(DeploymentFrequencyCalculator.class);
 
-    public MetricResult calculate(List<GithubDeployment> deployments, int windowDays) {
+    public MetricResult calculate(List<GithubDeployment> deployments,
+                                  List<GithubWorkflowRun> workflowRuns,
+                                  int windowDays) {
         List<GithubDeployment> successful = deployments.stream()
                 .filter(d -> "success".equals(d.getStatus()))
                 .toList();
 
-        if (successful.isEmpty()) {
-            log.debug("No successful deployments found in window of {} days", windowDays);
+        if (!successful.isEmpty()) {
+            double deploysPerDay = (double) successful.size() / windowDays;
+            DoraPerformanceBand band = DoraPerformanceBand.forDeploymentFrequency(deploysPerDay);
+            List<Instant> timestamps = successful.stream().map(GithubDeployment::getCreatedAt).toList();
+            log.debug("Deployment frequency: {}/day ({}) from deployments", deploysPerDay, band);
+            return new MetricResult(deploysPerDay, "deploys/day", band, true,
+                    buildWeeklyBuckets(timestamps, windowDays), null);
+        }
+
+        // Fallback: use successful CI runs on main as a deployment proxy
+        List<GithubWorkflowRun> successfulRuns = workflowRuns.stream()
+                .filter(r -> "success".equals(r.getConclusion()))
+                .toList();
+
+        if (successfulRuns.isEmpty()) {
+            log.debug("No successful deployments or CI runs found in window of {} days", windowDays);
             return MetricResult.notAvailable("No deployment data found for this repository.");
         }
 
-        double deploysPerDay = (double) successful.size() / windowDays;
-        DoraPerformanceBand band = DoraPerformanceBand.forDeploymentFrequency(deploysPerDay);
-
-        List<Instant> timestamps = successful.stream()
-                .map(GithubDeployment::getCreatedAt)
-                .toList();
-        List<WeekDataPoint> timeSeries = buildWeeklyBuckets(timestamps, windowDays);
-
-        log.debug("Deployment frequency: {}/day ({})", deploysPerDay, band);
-        return new MetricResult(deploysPerDay, "deploys/day", band, true, timeSeries, null);
+        double runsPerDay = (double) successfulRuns.size() / windowDays;
+        DoraPerformanceBand band = DoraPerformanceBand.forDeploymentFrequency(runsPerDay);
+        List<Instant> timestamps = successfulRuns.stream().map(GithubWorkflowRun::getCreatedAt).toList();
+        log.debug("Deployment frequency: {}/day ({}) from CI runs (proxy)", runsPerDay, band);
+        return new MetricResult(runsPerDay, "runs/day", band, true,
+                buildWeeklyBuckets(timestamps, windowDays),
+                "Based on successful CI runs on main (no GitHub Deployments configured)");
     }
 
     private List<WeekDataPoint> buildWeeklyBuckets(List<Instant> timestamps, int windowDays) {

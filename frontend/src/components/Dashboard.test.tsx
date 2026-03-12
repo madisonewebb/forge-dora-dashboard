@@ -48,7 +48,7 @@ describe('Dashboard', () => {
   it('renders the 30/90/180 day selector', async () => {
     mockFetchOk()
     render(
-      <Dashboard owner="liatrio" repo="liatrio" token="tok" initialDays={30} onBack={vi.fn()} />
+      <Dashboard owner="liatrio" repo="liatrio" token="tok" initialDays={30} onBack={vi.fn()} onLogout={vi.fn()} />
     )
     expect(screen.getByRole('button', { name: '30 days' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '90 days' })).toBeInTheDocument()
@@ -58,7 +58,7 @@ describe('Dashboard', () => {
   it('selecting 90 days triggers a new fetch with days=90', async () => {
     mockFetchOk()
     render(
-      <Dashboard owner="liatrio" repo="liatrio" token="tok" initialDays={30} onBack={vi.fn()} />
+      <Dashboard owner="liatrio" repo="liatrio" token="tok" initialDays={30} onBack={vi.fn()} onLogout={vi.fn()} />
     )
     await userEvent.click(screen.getByRole('button', { name: '90 days' }))
     await waitFor(() => {
@@ -74,7 +74,7 @@ describe('Dashboard', () => {
       json: async () => ({ error: 'Rate limit exceeded', resetsAt: '2026-03-10T12:00:00Z' }),
     }))
     render(
-      <Dashboard owner="liatrio" repo="liatrio" token="tok" initialDays={30} onBack={vi.fn()} />
+      <Dashboard owner="liatrio" repo="liatrio" token="tok" initialDays={30} onBack={vi.fn()} onLogout={vi.fn()} />
     )
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
@@ -84,26 +84,26 @@ describe('Dashboard', () => {
     expect(alert).toHaveTextContent('2026-03-10')
   })
 
-  it('renders bad-token banner on HTTP 401', async () => {
+  it('renders auth error banner on HTTP 401', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,
       status: 401,
       json: async () => ({ error: 'Unauthorized' }),
     }))
     render(
-      <Dashboard owner="liatrio" repo="liatrio" token="bad" initialDays={30} onBack={vi.fn()} />
+      <Dashboard owner="liatrio" repo="liatrio" token="bad" initialDays={30} onBack={vi.fn()} onLogout={vi.fn()} />
     )
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     })
-    expect(screen.getByRole('alert')).toHaveTextContent(/invalid or expired github token/i)
+    expect(screen.getByRole('alert')).toHaveTextContent(/github login expired/i)
   })
 
   it('Change Repository link returns to the input form', async () => {
     mockFetchOk()
     const onBack = vi.fn()
     render(
-      <Dashboard owner="liatrio" repo="liatrio" token="tok" initialDays={30} onBack={onBack} />
+      <Dashboard owner="liatrio" repo="liatrio" token="tok" initialDays={30} onBack={onBack} onLogout={vi.fn()} />
     )
     await userEvent.click(screen.getByRole('button', { name: /change repository/i }))
     expect(onBack).toHaveBeenCalledOnce()
