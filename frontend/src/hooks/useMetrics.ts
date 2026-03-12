@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import type { MetricsResponse } from '../types/metrics'
+import type { MetricsResponse, RateLimitInfo } from '../types/metrics'
 
 export interface MetricsError {
   status: number | null
@@ -18,6 +18,7 @@ export function useMetrics({ owner, repo, token, days }: UseMetricsParams) {
   const [data, setData] = useState<MetricsResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<MetricsError | null>(null)
+  const [rateLimit, setRateLimit] = useState<RateLimitInfo | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -31,6 +32,18 @@ export function useMetrics({ owner, repo, token, days }: UseMetricsParams) {
           { headers: { Authorization: `Bearer ${token}` } }
         )
         if (cancelled) return
+
+        const remainingHeader = res.headers.get('X-GitHub-RateLimit-Remaining')
+        const limitHeader = res.headers.get('X-GitHub-RateLimit-Limit')
+        const resetHeader = res.headers.get('X-GitHub-RateLimit-Reset')
+        if (remainingHeader !== null && limitHeader !== null && resetHeader !== null) {
+          const resetEpoch = parseInt(resetHeader, 10)
+          setRateLimit({
+            remaining: parseInt(remainingHeader, 10),
+            limit: parseInt(limitHeader, 10),
+            resetAt: isNaN(resetEpoch) ? resetHeader : new Date(resetEpoch * 1000).toISOString(),
+          })
+        }
 
         if (!res.ok) {
           let resetsAt: string | undefined
@@ -64,5 +77,5 @@ export function useMetrics({ owner, repo, token, days }: UseMetricsParams) {
     return () => { cancelled = true }
   }, [owner, repo, token, days])
 
-  return { data, loading, error }
+  return { data, loading, error, rateLimit }
 }

@@ -1,5 +1,6 @@
 package com.liatrio.dora.controller;
 
+import com.liatrio.dora.client.GitHubApiClient;
 import com.liatrio.dora.dto.MetricHistoryResponse;
 import com.liatrio.dora.dto.MetricsResponse;
 import com.liatrio.dora.model.MetricSnapshot;
@@ -15,21 +16,23 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Set;
 
 @RestController
 @RequestMapping("/api/metrics")
 public class MetricsController {
 
     private static final Logger log = LoggerFactory.getLogger(MetricsController.class);
-    private static final Set<Integer> VALID_DAYS = Set.of(30, 90, 180);
+    private static final int MIN_DAYS = 7;
+    private static final int MAX_DAYS = 365;
 
     private final MetricsService metricsService;
     private final MetricSnapshotService snapshotService;
+    private final GitHubApiClient gitHubApiClient;
 
-    public MetricsController(MetricsService metricsService, MetricSnapshotService snapshotService) {
+    public MetricsController(MetricsService metricsService, MetricSnapshotService snapshotService, GitHubApiClient gitHubApiClient) {
         this.metricsService = metricsService;
         this.snapshotService = snapshotService;
+        this.gitHubApiClient = gitHubApiClient;
     }
 
     @GetMapping
@@ -39,8 +42,8 @@ public class MetricsController {
             @RequestHeader("Authorization") String authHeader,
             @RequestParam(defaultValue = "30") int days) {
 
-        if (!VALID_DAYS.contains(days)) {
-            throw new IllegalArgumentException("days must be 30, 90, or 180");
+        if (days < MIN_DAYS || days > MAX_DAYS) {
+            throw new IllegalArgumentException("days must be between 7 and 365");
         }
 
         String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
@@ -53,7 +56,14 @@ public class MetricsController {
             log.warn("Snapshot persistence failed for {}/{} — metrics response unaffected: {}", owner, repo, e.getMessage());
         }
 
-        return ResponseEntity.ok(response);
+        GitHubApiClient.RateLimitInfo rateLimit = gitHubApiClient.getRateLimitInfo();
+        ResponseEntity.BodyBuilder builder = ResponseEntity.ok();
+        if (rateLimit.remaining() >= 0) {
+            builder.header("X-GitHub-RateLimit-Remaining", String.valueOf(rateLimit.remaining()));
+            builder.header("X-GitHub-RateLimit-Limit", String.valueOf(rateLimit.limit()));
+            builder.header("X-GitHub-RateLimit-Reset", String.valueOf(rateLimit.resetEpoch()));
+        }
+        return builder.body(response);
     }
 
     @GetMapping("/history")

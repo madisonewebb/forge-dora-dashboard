@@ -9,16 +9,16 @@ interface DashboardProps {
   owner: string
   repo: string
   token: string
-  initialDays: 30 | 90 | 180
+  initialDays: number
   onBack: () => void
   onLogout: () => void
-  onDaysChange?: (days: 30 | 90 | 180) => void
+  onDaysChange?: (days: number) => void
 }
 
 const WINDOWS = [30, 90, 180] as const
 
 export default function Dashboard({ owner, repo, token, initialDays, onBack, onLogout, onDaysChange }: DashboardProps) {
-  const [days, setDays] = useState<30 | 90 | 180>(initialDays)
+  const [days, setDays] = useState<number>(initialDays)
   const [dismissed, setDismissed] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -28,7 +28,7 @@ export default function Dashboard({ owner, repo, token, initialDays, onBack, onL
       setTimeout(() => setCopied(false), 2000)
     })
   }, [])
-  const { data, loading, error } = useMetrics({ owner, repo, token, days })
+  const { data, loading, error, rateLimit } = useMetrics({ owner, repo, token, days })
 
   function getErrorMessage(): string {
     if (!error) return ''
@@ -73,6 +73,26 @@ export default function Dashboard({ owner, repo, token, initialDays, onBack, onL
             <span style={{ color: 'var(--border2)', margin: '0 0.125rem' }}>/</span>
             <span style={{ color: 'var(--text)' }}>{repo}</span>
           </div>
+
+          {/* Rate limit indicator */}
+          {rateLimit && (
+            <div
+              title={rateLimit.remaining < 100 ? 'API rate limit almost exhausted' : undefined}
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.75rem',
+                color: rateLimit.remaining < 100
+                  ? 'var(--red, #f87171)'
+                  : rateLimit.remaining < 500
+                    ? '#FFB547'
+                    : 'var(--text-muted)',
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              ⚡ {rateLimit.remaining.toLocaleString()} / {rateLimit.limit.toLocaleString()}
+            </div>
+          )}
 
           {/* Actions */}
           <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>

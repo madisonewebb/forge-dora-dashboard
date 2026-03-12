@@ -11,7 +11,7 @@ const EXPIRES_KEY = 'gh_token_expires_at'
 interface DashboardParams {
   owner: string
   repo: string
-  days: 30 | 90 | 180
+  days: number
 }
 
 function App() {
@@ -40,7 +40,7 @@ function App() {
     const sp = new URLSearchParams(window.location.search)
     const owner = sp.get('owner')
     const repo = sp.get('repo')
-    const days = parseInt(sp.get('days') ?? '30') as 30 | 90 | 180
+    const days = parseInt(sp.get('days') ?? '30')
     if (owner && repo) {
       setParams({ owner, repo, days })
       if (token) {
@@ -73,11 +73,11 @@ function App() {
 
   function handleFormSubmit(owner: string, repo: string, days: number) {
     updateUrl(owner, repo, days)
-    setParams({ owner, repo, days: days as 30 | 90 | 180 })
+    setParams({ owner, repo, days })
     setView('dashboard')
   }
 
-  function handleDaysChange(days: 30 | 90 | 180) {
+  function handleDaysChange(days: number) {
     if (params) {
       updateUrl(params.owner, params.repo, days)
       setParams(p => p ? { ...p, days } : p)

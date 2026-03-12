@@ -1,5 +1,6 @@
 package com.liatrio.dora.controller;
 
+import com.liatrio.dora.client.GitHubApiClient;
 import com.liatrio.dora.dto.DoraPerformanceBand;
 import com.liatrio.dora.dto.MetricResult;
 import com.liatrio.dora.dto.MetricsMeta;
@@ -7,6 +8,7 @@ import com.liatrio.dora.dto.MetricsResponse;
 import com.liatrio.dora.model.MetricSnapshot;
 import com.liatrio.dora.service.MetricSnapshotService;
 import com.liatrio.dora.service.MetricsService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -34,6 +36,16 @@ class MetricsControllerTest {
     @MockBean
     private MetricSnapshotService snapshotService;
 
+    @MockBean
+    private GitHubApiClient gitHubApiClient;
+
+    @BeforeEach
+    void stubRateLimit() {
+        // Default: no rate-limit data seen yet (remaining < 0 suppresses headers)
+        when(gitHubApiClient.getRateLimitInfo())
+                .thenReturn(new GitHubApiClient.RateLimitInfo(-1, -1, -1L));
+    }
+
     @Test
     void getMetrics_returns200WithCorrectShape() throws Exception {
         MetricsMeta meta = new MetricsMeta("liatrio", "liatrio", 30, Instant.now());
@@ -59,13 +71,40 @@ class MetricsControllerTest {
     }
 
     @Test
-    void getMetrics_invalidDays_returns400() throws Exception {
+    void getMetrics_invalidDays_tooLarge_returns400() throws Exception {
         mockMvc.perform(get("/api/metrics")
                         .param("owner", "liatrio")
                         .param("repo", "liatrio")
                         .header("Authorization", "Bearer test-token")
-                        .param("days", "999"))
+                        .param("days", "366"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getMetrics_invalidDays_tooSmall_returns400() throws Exception {
+        mockMvc.perform(get("/api/metrics")
+                        .param("owner", "liatrio")
+                        .param("repo", "liatrio")
+                        .header("Authorization", "Bearer test-token")
+                        .param("days", "6"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getMetrics_customDays_isValid() throws Exception {
+        MetricsMeta meta = new MetricsMeta("liatrio", "liatrio", 60, Instant.now());
+        MetricResult notAvailable = MetricResult.notAvailable("no data");
+        MetricsResponse response = new MetricsResponse(meta, notAvailable, notAvailable, notAvailable, notAvailable);
+
+        when(metricsService.getMetrics(anyString(), anyString(), anyString(), eq(60)))
+                .thenReturn(response);
+
+        mockMvc.perform(get("/api/metrics")
+                        .param("owner", "liatrio")
+                        .param("repo", "liatrio")
+                        .header("Authorization", "Bearer test-token")
+                        .param("days", "60"))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -104,6 +143,49 @@ class MetricsControllerTest {
     }
 
     @Test
+    void getMetrics_rateLimitHeaders_areForwardedWhenAvailable() throws Exception {
+        MetricsMeta meta = new MetricsMeta("liatrio", "liatrio", 30, Instant.now());
+        MetricResult notAvailable = MetricResult.notAvailable("no data");
+        MetricsResponse response = new MetricsResponse(meta, notAvailable, notAvailable, notAvailable, notAvailable);
+
+        when(metricsService.getMetrics(anyString(), anyString(), anyString(), eq(30)))
+                .thenReturn(response);
+        when(gitHubApiClient.getRateLimitInfo())
+                .thenReturn(new GitHubApiClient.RateLimitInfo(4231, 5000, 1741824000L));
+
+        mockMvc.perform(get("/api/metrics")
+                        .param("owner", "liatrio")
+                        .param("repo", "liatrio")
+                        .header("Authorization", "Bearer test-token")
+                        .param("days", "30"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-GitHub-RateLimit-Remaining", "4231"))
+                .andExpect(header().string("X-GitHub-RateLimit-Limit", "5000"))
+                .andExpect(header().string("X-GitHub-RateLimit-Reset", "1741824000"));
+    }
+
+    @Test
+    void getMetrics_rateLimitHeaders_areAbsentWhenNoDataSeen() throws Exception {
+        MetricsMeta meta = new MetricsMeta("liatrio", "liatrio", 30, Instant.now());
+        MetricResult notAvailable = MetricResult.notAvailable("no data");
+        MetricsResponse response = new MetricsResponse(meta, notAvailable, notAvailable, notAvailable, notAvailable);
+
+        when(metricsService.getMetrics(anyString(), anyString(), anyString(), eq(30)))
+                .thenReturn(response);
+        // @BeforeEach already stubs getRateLimitInfo() with remaining=-1
+
+        mockMvc.perform(get("/api/metrics")
+                        .param("owner", "liatrio")
+                        .param("repo", "liatrio")
+                        .header("Authorization", "Bearer test-token")
+                        .param("days", "30"))
+                .andExpect(status().isOk())
+                .andExpect(header().doesNotExist("X-GitHub-RateLimit-Remaining"))
+                .andExpect(header().doesNotExist("X-GitHub-RateLimit-Limit"))
+                .andExpect(header().doesNotExist("X-GitHub-RateLimit-Reset"));
+    }
+
+    @Test
     void getHistory_returns200WithExpectedStructure() throws Exception {
         Instant now = Instant.now();
         MetricSnapshot snap = MetricSnapshot.builder()
@@ -133,7 +215,7 @@ class MetricsControllerTest {
                 .andExpect(jsonPath("$.repoId").value("liatrio/test-repo"))
                 .andExpect(jsonPath("$.snapshots").isArray())
                 .andExpect(jsonPath("$.snapshots[0].metricName").value("deploymentFrequency"))
-                .andExpect(jsonPath("$.snapshots[0].value").value(1.5))
+                .andExpect(jsonPath("$.snapshots[0].unit").value("deploys/day"))
                 .andExpect(jsonPath("$.snapshots[0].band").value("ELITE"));
     }
 

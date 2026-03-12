@@ -39,9 +39,14 @@ const mockData: MetricsResponse = {
   mttr: makeMetricResult({ unit: 'hours' }),
 }
 
-function mockFetchOk() {
+function makeHeaders(overrides: Record<string, string> = {}) {
+  return { get: (name: string) => overrides[name] ?? null }
+}
+
+function mockFetchOk(rateLimitHeaders: Record<string, string> = {}) {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
     ok: true,
+    headers: makeHeaders(rateLimitHeaders),
     json: async () => mockData,
   }))
 }
@@ -77,6 +82,7 @@ describe('Dashboard', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,
       status: 429,
+      headers: makeHeaders(),
       json: async () => ({ error: 'Rate limit exceeded', resetsAt: '2026-03-10T12:00:00Z' }),
     }))
     render(
@@ -94,6 +100,7 @@ describe('Dashboard', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,
       status: 401,
+      headers: makeHeaders(),
       json: async () => ({ error: 'Unauthorized' }),
     }))
     render(
@@ -103,6 +110,30 @@ describe('Dashboard', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     })
     expect(screen.getByRole('alert')).toHaveTextContent(/your github session has expired/i)
+  })
+
+  it('shows rate limit indicator when headers are present', async () => {
+    mockFetchOk({
+      'X-GitHub-RateLimit-Remaining': '4231',
+      'X-GitHub-RateLimit-Limit': '5000',
+      'X-GitHub-RateLimit-Reset': '1741824000',
+    })
+    render(
+      <Dashboard owner="liatrio" repo="liatrio" token="tok" initialDays={30} onBack={vi.fn()} onLogout={vi.fn()} />
+    )
+    await waitFor(() => {
+      expect(screen.getByText(/4,231\s*\/\s*5,000/)).toBeInTheDocument()
+    })
+  })
+
+  it('does not show rate limit indicator when headers are absent', async () => {
+    mockFetchOk()
+    render(
+      <Dashboard owner="liatrio" repo="liatrio" token="tok" initialDays={30} onBack={vi.fn()} onLogout={vi.fn()} />
+    )
+    await waitFor(() => {
+      expect(screen.queryAllByText(/\/ 5,000/)).toHaveLength(0)
+    })
   })
 
   it('Change Repository link returns to the input form', async () => {

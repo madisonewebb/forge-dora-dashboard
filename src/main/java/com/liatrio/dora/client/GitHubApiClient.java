@@ -18,6 +18,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Component
 public class GitHubApiClient {
@@ -28,8 +30,18 @@ public class GitHubApiClient {
 
     private final WebClient webClient;
 
+    private final AtomicInteger rateLimitRemaining = new AtomicInteger(-1);
+    private final AtomicInteger rateLimitLimit = new AtomicInteger(-1);
+    private final AtomicLong rateLimitReset = new AtomicLong(-1L);
+
+    public record RateLimitInfo(int remaining, int limit, long resetEpoch) {}
+
     public GitHubApiClient(WebClient githubWebClient) {
         this.webClient = githubWebClient;
+    }
+
+    public RateLimitInfo getRateLimitInfo() {
+        return new RateLimitInfo(rateLimitRemaining.get(), rateLimitLimit.get(), rateLimitReset.get());
     }
 
     public List<GithubDeployment> fetchDeployments(String owner, String repo, String token, Instant windowStart) {
@@ -217,12 +229,14 @@ public class GitHubApiClient {
     private ResponseEntity<List<Map<String, Object>>> fetchPage(String url, String token) {
         for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
             try {
-                return webClient.get()
+                ResponseEntity<List<Map<String, Object>>> response = webClient.get()
                         .uri(url)
                         .header("Authorization", "Bearer " + token)
                         .retrieve()
                         .toEntity((Class<List<Map<String, Object>>>) (Class<?>) List.class)
                         .block();
+                captureRateLimitHeaders(response);
+                return response;
             } catch (WebClientResponseException e) {
                 if (isPaginationStopSignal(e)) {
                     log.warn("GitHub pagination stopped at {} ({}), returning partial results", url, e.getStatusCode());
@@ -238,12 +252,14 @@ public class GitHubApiClient {
     private ResponseEntity<Map<String, Object>> fetchPageRaw(String url, String token) {
         for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
             try {
-                return webClient.get()
+                ResponseEntity<Map<String, Object>> response = webClient.get()
                         .uri(url)
                         .header("Authorization", "Bearer " + token)
                         .retrieve()
                         .toEntity((Class<Map<String, Object>>) (Class<?>) Map.class)
                         .block();
+                captureRateLimitHeaders(response);
+                return response;
             } catch (WebClientResponseException e) {
                 if (isPaginationStopSignal(e)) {
                     log.warn("GitHub pagination stopped at {} ({}), returning partial results", url, e.getStatusCode());
@@ -253,6 +269,22 @@ public class GitHubApiClient {
             }
         }
         throw new GitHubRateLimitException(Instant.now().plusSeconds(3600));
+    }
+
+    private void captureRateLimitHeaders(ResponseEntity<?> response) {
+        if (response == null) return;
+        String remaining = response.getHeaders().getFirst("X-RateLimit-Remaining");
+        String limit = response.getHeaders().getFirst("X-RateLimit-Limit");
+        String reset = response.getHeaders().getFirst("X-RateLimit-Reset");
+        if (remaining != null) {
+            try { rateLimitRemaining.set(Integer.parseInt(remaining)); } catch (NumberFormatException ignored) {}
+        }
+        if (limit != null) {
+            try { rateLimitLimit.set(Integer.parseInt(limit)); } catch (NumberFormatException ignored) {}
+        }
+        if (reset != null) {
+            try { rateLimitReset.set(Long.parseLong(reset)); } catch (NumberFormatException ignored) {}
+        }
     }
 
     /**
