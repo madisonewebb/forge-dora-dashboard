@@ -12,15 +12,13 @@ terraform {
     }
   }
 
-  # Remote state — uncomment after running terraform/bootstrap.sh
-  # Replace ACCOUNT_ID and REGION with your values from the bootstrap output.
-  # backend "s3" {
-  #   bucket         = "dora-terraform-state-ACCOUNT_ID-REGION"
-  #   key            = "dora-dashboard/terraform.tfstate"
-  #   region         = "REGION"
-  #   dynamodb_table = "terraform-state-lock"
-  #   encrypt        = true
-  # }
+  backend "s3" {
+    bucket       = "dora-terraform-state-277802554323-us-east-1"
+    key          = "dora-dashboard/terraform.tfstate"
+    region       = "us-east-1"
+    encrypt      = true
+    use_lockfile = true
+  }
 }
 
 provider "aws" {
