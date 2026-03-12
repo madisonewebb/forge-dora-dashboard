@@ -1,8 +1,11 @@
 package com.liatrio.dora.controller;
 
+import com.liatrio.dora.dto.DoraPerformanceBand;
 import com.liatrio.dora.dto.MetricResult;
 import com.liatrio.dora.dto.MetricsMeta;
 import com.liatrio.dora.dto.MetricsResponse;
+import com.liatrio.dora.model.MetricSnapshot;
+import com.liatrio.dora.service.MetricSnapshotService;
 import com.liatrio.dora.service.MetricsService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +30,9 @@ class MetricsControllerTest {
 
     @MockBean
     private MetricsService metricsService;
+
+    @MockBean
+    private MetricSnapshotService snapshotService;
 
     @Test
     void getMetrics_returns200WithCorrectShape() throws Exception {
@@ -95,5 +101,67 @@ class MetricsControllerTest {
                         .header("Authorization", "Bearer test-token")
                         .param("days", "90"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void getHistory_returns200WithExpectedStructure() throws Exception {
+        Instant now = Instant.now();
+        MetricSnapshot snap = MetricSnapshot.builder()
+                .id(1L)
+                .repoId("liatrio/test-repo")
+                .metricName("deploymentFrequency")
+                .windowDays(30)
+                .value(1.5)
+                .unit("deploys/day")
+                .band(DoraPerformanceBand.ELITE)
+                .dataAvailable(true)
+                .snapshotAt(now)
+                .windowStart(now.minusSeconds(30L * 24 * 3600))
+                .windowEnd(now)
+                .build();
+
+        when(snapshotService.getHistory(eq("liatrio"), eq("test-repo"), eq("deploymentFrequency"), eq(365)))
+                .thenReturn(List.of(snap));
+
+        mockMvc.perform(get("/api/metrics/history")
+                        .param("owner", "liatrio")
+                        .param("repo", "test-repo")
+                        .param("metric", "deploymentFrequency")
+                        .param("lookbackDays", "365"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.metricName").value("deploymentFrequency"))
+                .andExpect(jsonPath("$.repoId").value("liatrio/test-repo"))
+                .andExpect(jsonPath("$.snapshots").isArray())
+                .andExpect(jsonPath("$.snapshots[0].metricName").value("deploymentFrequency"))
+                .andExpect(jsonPath("$.snapshots[0].value").value(1.5))
+                .andExpect(jsonPath("$.snapshots[0].band").value("ELITE"));
+    }
+
+    @Test
+    void getHistory_defaultLookback_uses365() throws Exception {
+        when(snapshotService.getHistory(anyString(), anyString(), anyString(), eq(365)))
+                .thenReturn(List.of());
+
+        mockMvc.perform(get("/api/metrics/history")
+                        .param("owner", "liatrio")
+                        .param("repo", "test-repo")
+                        .param("metric", "leadTime"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.snapshots").isArray());
+
+        verify(snapshotService).getHistory(eq("liatrio"), eq("test-repo"), eq("leadTime"), eq(365));
+    }
+
+    @Test
+    void getHistory_emptySnapshots_returns200WithEmptyList() throws Exception {
+        when(snapshotService.getHistory(anyString(), anyString(), anyString(), anyInt()))
+                .thenReturn(List.of());
+
+        mockMvc.perform(get("/api/metrics/history")
+                        .param("owner", "liatrio")
+                        .param("repo", "test-repo")
+                        .param("metric", "mttr"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.snapshots").isEmpty());
     }
 }

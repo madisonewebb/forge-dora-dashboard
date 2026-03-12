@@ -51,7 +51,7 @@ class MetricsServiceTest {
 
         metricsService.getMetrics("owner", "repo", "token", 30);
 
-        verify(deploymentFrequencyCalculator, times(1)).calculate(anyList(), anyList(), eq(30));
+        verify(deploymentFrequencyCalculator, times(1)).calculate(anyList(), anyList(), anyList(), eq(30));
         verify(leadTimeCalculator, times(1)).calculate(anyList(), anyList(), eq(30));
         verify(changeFailureRateCalculator, times(1)).calculate(anyList(), anyList(), anyList(), anyList(), eq(30));
         verify(mttrCalculator, times(1)).calculate(anyList(), anyList(), eq(30));
@@ -66,7 +66,7 @@ class MetricsServiceTest {
         MetricResult cfrResult = MetricResult.notAvailable("no cfr");
         MetricResult mttrResult = MetricResult.notAvailable("no mttr");
 
-        when(deploymentFrequencyCalculator.calculate(anyList(), anyList(), anyInt())).thenReturn(deployFreqResult);
+        when(deploymentFrequencyCalculator.calculate(anyList(), anyList(), anyList(), anyInt())).thenReturn(deployFreqResult);
         when(leadTimeCalculator.calculate(anyList(), anyList(), anyInt())).thenReturn(leadTimeResult);
         when(changeFailureRateCalculator.calculate(anyList(), anyList(), anyList(), anyList(), anyInt())).thenReturn(cfrResult);
         when(mttrCalculator.calculate(anyList(), anyList(), anyInt())).thenReturn(mttrResult);
@@ -89,6 +89,8 @@ class MetricsServiceTest {
     private void stubCacheService() {
         when(cacheService.getDeployments(anyString(), anyString(), anyString(), any(Instant.class)))
                 .thenReturn(List.of());
+        when(cacheService.getReleases(anyString(), anyString(), anyString(), any(Instant.class)))
+                .thenReturn(List.of());
         when(cacheService.getWorkflowRuns(anyString(), anyString(), anyString(), any(Instant.class)))
                 .thenReturn(List.of());
         when(cacheService.getPullRequests(anyString(), anyString(), anyString(), any(Instant.class)))
@@ -98,7 +100,7 @@ class MetricsServiceTest {
     }
 
     private void stubAllCalculators() {
-        when(deploymentFrequencyCalculator.calculate(anyList(), anyList(), anyInt()))
+        when(deploymentFrequencyCalculator.calculate(anyList(), anyList(), anyList(), anyInt()))
                 .thenReturn(MetricResult.notAvailable("test"));
         when(leadTimeCalculator.calculate(anyList(), anyList(), anyInt()))
                 .thenReturn(MetricResult.notAvailable("test"));

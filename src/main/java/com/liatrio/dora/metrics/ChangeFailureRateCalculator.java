@@ -1,5 +1,6 @@
 package com.liatrio.dora.metrics;
 
+import com.liatrio.dora.config.DoraLabelsProperties;
 import com.liatrio.dora.dto.DoraPerformanceBand;
 import com.liatrio.dora.dto.MetricResult;
 import com.liatrio.dora.dto.WeekDataPoint;
@@ -28,10 +29,14 @@ public class ChangeFailureRateCalculator {
 
     private static final Logger log = LoggerFactory.getLogger(ChangeFailureRateCalculator.class);
 
-    private static final Set<String> FAILURE_PR_LABELS = Set.of("hotfix", "revert", "bug");
-    private static final Set<String> INCIDENT_ISSUE_LABELS = Set.of("incident", "outage");
     private static final Pattern ROLLBACK_PATTERN = Pattern.compile("(?i)^(rollback|revert).*");
     private static final Duration INCIDENT_WINDOW = Duration.ofHours(24);
+
+    private final DoraLabelsProperties labelsProperties;
+
+    public ChangeFailureRateCalculator(DoraLabelsProperties labelsProperties) {
+        this.labelsProperties = labelsProperties;
+    }
 
     public MetricResult calculate(List<GithubDeployment> deployments,
                                   List<GithubPullRequest> pullRequests,
@@ -53,7 +58,7 @@ public class ChangeFailureRateCalculator {
                         Duration gap = Duration.between(pr.getMergedAt(), deploy.getCreatedAt());
                         return !gap.isNegative() && gap.compareTo(INCIDENT_WINDOW) <= 0;
                     })
-                    .anyMatch(pr -> hasAnyLabel(pr.getLabels(), FAILURE_PR_LABELS));
+                    .anyMatch(pr -> isFailurePrLabel(pr.getLabels()));
 
             if (labeledPr) failedDeploymentIds.add(deploy.getGithubId());
 
@@ -63,7 +68,7 @@ public class ChangeFailureRateCalculator {
                         Duration gap = Duration.between(deploy.getCreatedAt(), issue.getCreatedAt());
                         return !gap.isNegative() && gap.compareTo(INCIDENT_WINDOW) <= 0;
                     })
-                    .anyMatch(issue -> hasAnyLabel(issue.getLabels(), INCIDENT_ISSUE_LABELS));
+                    .anyMatch(issue -> isIncidentLabel(issue.getLabels()));
 
             if (incidentIssue) failedDeploymentIds.add(deploy.getGithubId());
 
@@ -98,7 +103,7 @@ public class ChangeFailureRateCalculator {
         // Also count revert/hotfix/bug PRs as a failure signal
         long revertPrs = pullRequests.stream()
                 .filter(pr -> pr.getMergedAt() != null)
-                .filter(pr -> hasAnyLabel(pr.getLabels(), FAILURE_PR_LABELS))
+                .filter(pr -> isFailurePrLabel(pr.getLabels()))
                 .count();
 
         long total = completed.size() + revertPrs;
@@ -153,12 +158,36 @@ public class ChangeFailureRateCalculator {
         return buckets;
     }
 
-    private boolean hasAnyLabel(String labelsField, Set<String> targets) {
-        if (labelsField == null || labelsField.isBlank()) return false;
+    private boolean isFailurePrLabel(String labelsField) {
+        List<String> failureLabels = new ArrayList<>(labelsProperties.getHotfix());
+        failureLabels.addAll(labelsProperties.getRevert());
+        failureLabels.addAll(labelsProperties.getBug());
+        return matchesAny(labelsField, failureLabels);
+    }
+
+    private boolean isIncidentLabel(String labelsField) {
+        return matchesAny(labelsField, labelsProperties.getIncident());
+    }
+
+    /**
+     * Returns true if any label in the comma-delimited {@code labelsField} matches any entry in
+     * {@code targets}. Matching is case-insensitive and treats hyphens and underscores as equivalent.
+     */
+    private static boolean matchesAny(String labelsField, List<String> targets) {
+        if (labelsField == null || labelsField.isBlank() || targets == null || targets.isEmpty()) {
+            return false;
+        }
         for (String label : labelsField.split(",")) {
-            if (targets.contains(label.trim().toLowerCase())) return true;
+            String normalized = normalize(label.trim());
+            for (String target : targets) {
+                if (normalized.equals(normalize(target))) return true;
+            }
         }
         return false;
+    }
+
+    private static String normalize(String s) {
+        return s.toLowerCase().replace('-', '_');
     }
 
     private List<WeekDataPoint> buildWeeklyBuckets(List<GithubDeployment> deployments,

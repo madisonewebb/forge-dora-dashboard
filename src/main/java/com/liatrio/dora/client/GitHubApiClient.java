@@ -4,6 +4,7 @@ import com.liatrio.dora.exception.GitHubRateLimitException;
 import com.liatrio.dora.model.GithubDeployment;
 import com.liatrio.dora.model.GithubIssue;
 import com.liatrio.dora.model.GithubPullRequest;
+import com.liatrio.dora.model.GithubRelease;
 import com.liatrio.dora.model.GithubWorkflowRun;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,6 +96,45 @@ public class GitHubApiClient {
                         .updatedAt(parseInstant(item.get("updated_at")))
                         .build();
                 results.add(run);
+            }
+            if (reachedWindow) break;
+            nextUrl = extractNextUrl(response);
+        }
+        return results;
+    }
+
+    public List<GithubRelease> fetchReleases(String owner, String repo, String token, Instant windowStart) {
+        List<GithubRelease> results = new ArrayList<>();
+        String nextUrl = "/repos/" + owner + "/" + repo + "/releases?per_page=" + PER_PAGE;
+
+        while (nextUrl != null) {
+            ResponseEntity<List<Map<String, Object>>> response = fetchPage(nextUrl, token);
+            List<Map<String, Object>> page = response.getBody();
+            if (page == null || page.isEmpty()) break;
+
+            boolean reachedWindow = false;
+            for (Map<String, Object> item : page) {
+                boolean isDraft = Boolean.TRUE.equals(item.get("draft"));
+                boolean isPrerelease = Boolean.TRUE.equals(item.get("prerelease"));
+                if (isDraft || isPrerelease) continue;
+
+                Instant publishedAt = parseInstant(item.get("published_at"));
+                Instant createdAt = parseInstant(item.get("created_at"));
+                if (publishedAt != null && publishedAt.isBefore(windowStart)) {
+                    reachedWindow = true;
+                    break;
+                }
+                GithubRelease release = GithubRelease.builder()
+                        .githubId(toLong(item.get("id")))
+                        .repoId(owner + "/" + repo)
+                        .tagName((String) item.get("tag_name"))
+                        .name((String) item.get("name"))
+                        .prerelease(isPrerelease)
+                        .draft(isDraft)
+                        .publishedAt(publishedAt)
+                        .createdAt(createdAt != null ? createdAt : (publishedAt != null ? publishedAt : Instant.now()))
+                        .build();
+                results.add(release);
             }
             if (reachedWindow) break;
             nextUrl = extractNextUrl(response);

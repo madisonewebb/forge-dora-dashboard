@@ -1,16 +1,113 @@
 import { useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
+import type { MetricsResponse } from '../types/metrics'
+import { computeTrend, type TrendDirection } from '../utils/trendDirection'
 
 interface InsightsPanelProps {
   owner: string
   repo: string
   token: string
   days: number
+  metrics?: MetricsResponse | null
 }
 
 type StreamStatus = 'analyzing' | 'streaming' | 'complete' | 'error'
 
-export default function InsightsPanel({ owner, repo, token, days }: InsightsPanelProps) {
+interface TrendChipConfig {
+  key: keyof Pick<MetricsResponse, 'deploymentFrequency' | 'leadTime' | 'changeFailureRate' | 'mttr'>
+  label: string
+  higherIsBetter: boolean
+}
+
+const CHIP_CONFIGS: TrendChipConfig[] = [
+  { key: 'deploymentFrequency', label: 'Dep. Freq', higherIsBetter: true },
+  { key: 'leadTime', label: 'Lead Time', higherIsBetter: false },
+  { key: 'changeFailureRate', label: 'CFR', higherIsBetter: false },
+  { key: 'mttr', label: 'MTTR', higherIsBetter: false },
+]
+
+function directionIcon(dir: TrendDirection): string {
+  if (dir === 'IMPROVING') return '↑'
+  if (dir === 'DECLINING') return '↓'
+  return '→'
+}
+
+interface ChipStyle {
+  background: string
+  border: string
+  color: string
+}
+
+function chipStyle(dir: TrendDirection): ChipStyle {
+  if (dir === 'IMPROVING') {
+    return {
+      background: 'rgba(168,255,53,0.10)',
+      border: '1px solid rgba(168,255,53,0.30)',
+      color: 'var(--lime)',
+    }
+  }
+  if (dir === 'DECLINING') {
+    return {
+      background: 'rgba(255,91,91,0.10)',
+      border: '1px solid rgba(255,91,91,0.30)',
+      color: '#FF5B5B',
+    }
+  }
+  return {
+    background: 'transparent',
+    border: '1px solid var(--border)',
+    color: 'var(--text-muted)',
+  }
+}
+
+function TrendChips({ metrics }: { metrics: MetricsResponse }) {
+  const chips = CHIP_CONFIGS.map(cfg => {
+    const result = metrics[cfg.key]
+    if (!result.dataAvailable || result.timeSeries.length < 2) return null
+    const dir = computeTrend(result.timeSeries, cfg.higherIsBetter)
+    const style = chipStyle(dir)
+    return (
+      <span
+        key={cfg.key}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.3rem',
+          padding: '0.2rem 0.55rem',
+          borderRadius: 20,
+          fontSize: '0.6875rem',
+          fontFamily: 'var(--font-mono)',
+          letterSpacing: '0.04em',
+          fontWeight: 600,
+          ...style,
+        }}
+        data-testid={`trend-chip-${cfg.key}`}
+      >
+        <span aria-hidden="true">{directionIcon(dir)}</span>
+        {cfg.label}
+        <span style={{ fontWeight: 400, opacity: 0.85 }}>{dir}</span>
+      </span>
+    )
+  }).filter(Boolean)
+
+  if (chips.length === 0) return null
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '0.4rem',
+        marginBottom: '1rem',
+      }}
+      data-testid="trend-chips-row"
+    >
+      {chips}
+    </div>
+  )
+}
+
+export default function InsightsPanel({ owner, repo, token, days, metrics }: InsightsPanelProps) {
   const [content, setContent] = useState('')
   const [status, setStatus] = useState<StreamStatus>('analyzing')
   const abortRef = useRef<AbortController | null>(null)
@@ -123,6 +220,9 @@ export default function InsightsPanel({ owner, repo, token, days }: InsightsPane
           regenerate
         </button>
       </div>
+
+      {/* Trend chips — shown as soon as metrics are available */}
+      {metrics && <TrendChips metrics={metrics} />}
 
       {status === 'analyzing' && (
         <p style={{

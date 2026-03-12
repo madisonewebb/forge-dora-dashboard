@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useMetrics } from '../hooks/useMetrics'
 import MetricCard from './MetricCard'
 import SkeletonCard from './SkeletonCard'
@@ -12,19 +12,28 @@ interface DashboardProps {
   initialDays: 30 | 90 | 180
   onBack: () => void
   onLogout: () => void
+  onDaysChange?: (days: 30 | 90 | 180) => void
 }
 
 const WINDOWS = [30, 90, 180] as const
 
-export default function Dashboard({ owner, repo, token, initialDays, onBack, onLogout }: DashboardProps) {
+export default function Dashboard({ owner, repo, token, initialDays, onBack, onLogout, onDaysChange }: DashboardProps) {
   const [days, setDays] = useState<30 | 90 | 180>(initialDays)
   const [dismissed, setDismissed] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopyLink = useCallback(() => {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }, [])
   const { data, loading, error } = useMetrics({ owner, repo, token, days })
 
   function getErrorMessage(): string {
     if (!error) return ''
     if (error.status === 429) return `GitHub rate limit exceeded. Resets at ${error.resetsAt ?? 'unknown'}.`
-    if (error.status === 401 || error.status === 403) return 'GitHub login expired or insufficient permissions.'
+    if (error.status === 401 || error.status === 403) return 'Your GitHub session has expired. Please log in again.'
     if (error.status === 404) return 'Repository not found. Check the owner/repo and try again.'
     if (error.status === 502) return 'Unexpected response from GitHub. The repository may have too many workflow runs, or Actions may not be enabled.'
     return 'Could not reach the server. Check your connection.'
@@ -85,6 +94,25 @@ export default function Dashboard({ owner, repo, token, initialDays, onBack, onL
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)' }}
             >
               ← Change
+            </button>
+            <button
+              onClick={handleCopyLink}
+              style={{
+                background: 'none',
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                color: copied ? 'var(--lime)' : 'var(--text-muted)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.6875rem',
+                letterSpacing: '0.06em',
+                padding: '0.25rem 0.625rem',
+                cursor: 'pointer',
+                transition: 'border-color 0.15s, color 0.15s',
+              }}
+              onMouseEnter={e => { if (!copied) { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.color = 'var(--text)' } }}
+              onMouseLeave={e => { if (!copied) { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)' } }}
+            >
+              {copied ? '✓ Copied' : '⎘ Share'}
             </button>
             <button
               onClick={onLogout}
@@ -157,7 +185,7 @@ export default function Dashboard({ owner, repo, token, initialDays, onBack, onL
             {WINDOWS.map(w => (
               <button
                 key={w}
-                onClick={() => { setDays(w); setDismissed(false) }}
+                onClick={() => { setDays(w); setDismissed(false); onDaysChange?.(w) }}
                 style={{
                   padding: '0.375rem 0.875rem',
                   borderRadius: 6,
@@ -208,7 +236,7 @@ export default function Dashboard({ owner, repo, token, initialDays, onBack, onL
 
         {/* AI Insights */}
         {data && !loading && (
-          <InsightsPanel owner={owner} repo={repo} token={token} days={days} />
+          <InsightsPanel owner={owner} repo={repo} token={token} days={days} metrics={data} />
         )}
       </main>
     </div>

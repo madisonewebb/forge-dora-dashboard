@@ -25,6 +25,7 @@ class GitHubCacheServiceTest {
     @Mock private GithubWorkflowRunRepository workflowRunRepo;
     @Mock private GithubPullRequestRepository pullRequestRepo;
     @Mock private GithubIssueRepository issueRepo;
+    @Mock private GithubReleaseRepository releaseRepo;
     @Mock private GithubCacheEntryRepository cacheEntryRepo;
 
     private GitHubCacheService cacheService;
@@ -33,7 +34,7 @@ class GitHubCacheServiceTest {
     void setUp() {
         cacheService = new GitHubCacheService(
                 apiClient, deploymentRepo, workflowRunRepo,
-                pullRequestRepo, issueRepo, cacheEntryRepo, 15);
+                pullRequestRepo, issueRepo, releaseRepo, cacheEntryRepo, 15);
     }
 
     @Test
@@ -107,5 +108,6 @@ class GitHubCacheServiceTest {
         verify(workflowRunRepo).deleteByRepoId("owner/repo");
         verify(pullRequestRepo).deleteByRepoId("owner/repo");
         verify(issueRepo).deleteByRepoId("owner/repo");
+        verify(releaseRepo).deleteByRepoId("owner/repo");
     }
 }

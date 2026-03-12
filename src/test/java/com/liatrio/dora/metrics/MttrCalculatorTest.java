@@ -1,5 +1,6 @@
 package com.liatrio.dora.metrics;
 
+import com.liatrio.dora.config.DoraLabelsProperties;
 import com.liatrio.dora.dto.DoraPerformanceBand;
 import com.liatrio.dora.dto.MetricResult;
 import com.liatrio.dora.model.GithubDeployment;
@@ -20,7 +21,16 @@ class MttrCalculatorTest {
 
     @BeforeEach
     void setUp() {
-        calculator = new MttrCalculator();
+        calculator = new MttrCalculator(defaultLabels());
+    }
+
+    private static DoraLabelsProperties defaultLabels() {
+        DoraLabelsProperties props = new DoraLabelsProperties();
+        props.setIncident(List.of("incident", "outage"));
+        props.setBug(List.of("bug", "defect"));
+        props.setHotfix(List.of("hotfix", "hot-fix", "hotpatch"));
+        props.setRevert(List.of("revert", "rollback"));
+        return props;
     }
 
     @Test
@@ -103,6 +113,22 @@ class MttrCalculatorTest {
         MetricResult result = calculator.calculate(List.of(), List.of(), 30);
 
         assertFalse(result.dataAvailable());
+    }
+
+    @Test
+    void calculate_evenCountIncidents_averagesTwoMiddleValues() {
+        // 4 incidents resolved in 1h, 3h, 5h, 7h → sorted middle pair = (3h + 5h) / 2 = 4.0h
+        List<GithubIssue> issues = List.of(
+                buildIssue(1L, NOW.minus(20, ChronoUnit.DAYS), NOW.minus(20, ChronoUnit.DAYS).plus(1, ChronoUnit.HOURS)),
+                buildIssue(2L, NOW.minus(15, ChronoUnit.DAYS), NOW.minus(15, ChronoUnit.DAYS).plus(3, ChronoUnit.HOURS)),
+                buildIssue(3L, NOW.minus(10, ChronoUnit.DAYS), NOW.minus(10, ChronoUnit.DAYS).plus(5, ChronoUnit.HOURS)),
+                buildIssue(4L, NOW.minus(5, ChronoUnit.DAYS), NOW.minus(5, ChronoUnit.DAYS).plus(7, ChronoUnit.HOURS))
+        );
+
+        MetricResult result = calculator.calculate(issues, List.of(), 30);
+
+        assertTrue(result.dataAvailable());
+        assertEquals(4.0, result.value(), 0.01);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

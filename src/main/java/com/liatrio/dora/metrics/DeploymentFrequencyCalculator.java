@@ -4,6 +4,7 @@ import com.liatrio.dora.dto.DoraPerformanceBand;
 import com.liatrio.dora.dto.MetricResult;
 import com.liatrio.dora.dto.WeekDataPoint;
 import com.liatrio.dora.model.GithubDeployment;
+import com.liatrio.dora.model.GithubRelease;
 import com.liatrio.dora.model.GithubWorkflowRun;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,8 +24,10 @@ public class DeploymentFrequencyCalculator {
     private static final Logger log = LoggerFactory.getLogger(DeploymentFrequencyCalculator.class);
 
     public MetricResult calculate(List<GithubDeployment> deployments,
+                                  List<GithubRelease> releases,
                                   List<GithubWorkflowRun> workflowRuns,
                                   int windowDays) {
+        // Signal 1: GitHub Deployments API
         List<GithubDeployment> successful = deployments.stream()
                 .filter(d -> "success".equals(d.getStatus()))
                 .toList();
@@ -38,13 +41,26 @@ public class DeploymentFrequencyCalculator {
                     buildWeeklyBuckets(timestamps, windowDays), null);
         }
 
-        // Fallback: use successful CI runs on main as a deployment proxy
+        // Signal 2: GitHub Releases (fallback when Deployments API is not configured)
+        if (!releases.isEmpty()) {
+            double releasesPerDay = (double) releases.size() / windowDays;
+            DoraPerformanceBand band = DoraPerformanceBand.forDeploymentFrequency(releasesPerDay);
+            List<Instant> timestamps = releases.stream()
+                    .map(r -> r.getPublishedAt() != null ? r.getPublishedAt() : r.getCreatedAt())
+                    .toList();
+            log.debug("Deployment frequency: {}/day ({}) from releases (proxy)", releasesPerDay, band);
+            return new MetricResult(releasesPerDay, "releases/day", band, true,
+                    buildWeeklyBuckets(timestamps, windowDays),
+                    "Based on GitHub Releases (no GitHub Deployments configured)");
+        }
+
+        // Signal 3: CI Workflow Runs on main (last resort fallback)
         List<GithubWorkflowRun> successfulRuns = workflowRuns.stream()
                 .filter(r -> "success".equals(r.getConclusion()))
                 .toList();
 
         if (successfulRuns.isEmpty()) {
-            log.debug("No successful deployments or CI runs found in window of {} days", windowDays);
+            log.debug("No successful deployments, releases, or CI runs found in window of {} days", windowDays);
             return MetricResult.notAvailable("No deployment data found for this repository.");
         }
 

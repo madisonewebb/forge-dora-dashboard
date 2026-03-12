@@ -77,8 +77,8 @@ class LeadTimeCalculatorTest {
     }
 
     @Test
-    void calculate_evenCountList_usesLowerMedian() {
-        // Four lead times: 1h, 2h, 4h, 8h → sorted, lower-middle = 2h
+    void calculate_evenCountList_averagesTwoMiddleValues() {
+        // Four lead times: 1h, 2h, 4h, 8h → sorted middle pair = (2h + 4h) / 2 = 3h
         Instant deploy = NOW.minus(1, ChronoUnit.DAYS);
         GithubPullRequest pr1 = buildPr(1L, deploy.minus(1, ChronoUnit.HOURS), deploy.minus(10, ChronoUnit.MINUTES));
         GithubPullRequest pr2 = buildPr(2L, deploy.minus(2, ChronoUnit.HOURS), deploy.minus(10, ChronoUnit.MINUTES));
@@ -89,7 +89,7 @@ class LeadTimeCalculatorTest {
         MetricResult result = calculator.calculate(List.of(pr1, pr2, pr3, pr4), List.of(d), 30);
 
         assertTrue(result.dataAvailable());
-        assertEquals(2.0, result.value(), 0.1);
+        assertEquals(3.0, result.value(), 0.01);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

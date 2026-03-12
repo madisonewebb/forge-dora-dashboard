@@ -4,6 +4,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Dashboard from './Dashboard'
 import type { MetricsResponse } from '../types/metrics'
 
+Object.defineProperty(navigator, 'clipboard', {
+  value: { writeText: vi.fn().mockResolvedValue(undefined) },
+  writable: true,
+  configurable: true,
+})
+
 vi.mock('react-chartjs-2', () => ({
   Line: () => <div data-testid="line-chart" />,
   Bar: () => <div data-testid="bar-chart" />,
@@ -96,7 +102,7 @@ describe('Dashboard', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     })
-    expect(screen.getByRole('alert')).toHaveTextContent(/github login expired/i)
+    expect(screen.getByRole('alert')).toHaveTextContent(/your github session has expired/i)
   })
 
   it('Change Repository link returns to the input form', async () => {
@@ -107,5 +113,28 @@ describe('Dashboard', () => {
     )
     await userEvent.click(screen.getByRole('button', { name: '← Change' }))
     expect(onBack).toHaveBeenCalledOnce()
+  })
+
+  it('renders the Share button in the header', async () => {
+    mockFetchOk()
+    render(
+      <Dashboard owner="liatrio" repo="liatrio" token="tok" initialDays={30} onBack={vi.fn()} onLogout={vi.fn()} />
+    )
+    expect(screen.getByRole('button', { name: '⎘ Share' })).toBeInTheDocument()
+  })
+
+  it('clicking Share copies the URL to clipboard', async () => {
+    mockFetchOk()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      writable: true,
+      configurable: true,
+    })
+    render(
+      <Dashboard owner="liatrio" repo="liatrio" token="tok" initialDays={30} onBack={vi.fn()} onLogout={vi.fn()} />
+    )
+    await userEvent.click(screen.getByRole('button', { name: '⎘ Share' }))
+    expect(writeText).toHaveBeenCalledWith(window.location.href)
   })
 })

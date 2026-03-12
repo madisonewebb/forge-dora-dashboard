@@ -1,5 +1,6 @@
 package com.liatrio.dora.metrics;
 
+import com.liatrio.dora.config.DoraLabelsProperties;
 import com.liatrio.dora.dto.DoraPerformanceBand;
 import com.liatrio.dora.dto.MetricResult;
 import com.liatrio.dora.dto.WeekDataPoint;
@@ -24,6 +25,12 @@ public class MttrCalculator {
 
     private static final Logger log = LoggerFactory.getLogger(MttrCalculator.class);
     private static final int MIN_INCIDENTS = 1;
+
+    private final DoraLabelsProperties labelsProperties;
+
+    public MttrCalculator(DoraLabelsProperties labelsProperties) {
+        this.labelsProperties = labelsProperties;
+    }
 
     public MetricResult calculate(List<GithubIssue> issues,
                                   List<GithubDeployment> deployments,
@@ -125,26 +132,41 @@ public class MttrCalculator {
         return new MetricResult(medianHours, "hours", band, true, timeSeries, null);
     }
 
-    private double median(List<Double> sorted) {
-        return sorted.get((sorted.size() - 1) / 2);
+    private static double median(List<Double> sorted) {
+        int size = sorted.size();
+        if (size % 2 == 1) {
+            return sorted.get(size / 2);
+        }
+        return (sorted.get(size / 2 - 1) + sorted.get(size / 2)) / 2.0;
     }
 
     private boolean hasIncidentLabel(String labelsField) {
-        if (labelsField == null || labelsField.isBlank()) return false;
+        return matchesAny(labelsField, labelsProperties.getIncident());
+    }
+
+    private boolean hasBugLabel(String labelsField) {
+        return matchesAny(labelsField, labelsProperties.getBug());
+    }
+
+    /**
+     * Returns true if any label in the comma-delimited {@code labelsField} matches any entry in
+     * {@code targets}. Matching is case-insensitive and treats hyphens and underscores as equivalent.
+     */
+    private static boolean matchesAny(String labelsField, List<String> targets) {
+        if (labelsField == null || labelsField.isBlank() || targets == null || targets.isEmpty()) {
+            return false;
+        }
         for (String label : labelsField.split(",")) {
-            String trimmed = label.trim().toLowerCase();
-            if ("incident".equals(trimmed) || "outage".equals(trimmed)) return true;
+            String normalized = normalize(label.trim());
+            for (String target : targets) {
+                if (normalized.equals(normalize(target))) return true;
+            }
         }
         return false;
     }
 
-    private boolean hasBugLabel(String labelsField) {
-        if (labelsField == null || labelsField.isBlank()) return false;
-        for (String label : labelsField.split(",")) {
-            String trimmed = label.trim().toLowerCase();
-            if ("bug".equals(trimmed) || "defect".equals(trimmed) || "fix".equals(trimmed)) return true;
-        }
-        return false;
+    private static String normalize(String s) {
+        return s.toLowerCase().replace('-', '_');
     }
 
     private List<WeekDataPoint> buildIssueWeeklyBuckets(List<GithubIssue> incidents, int windowDays) {

@@ -1,5 +1,6 @@
 package com.liatrio.dora.metrics;
 
+import com.liatrio.dora.config.DoraLabelsProperties;
 import com.liatrio.dora.dto.MetricResult;
 import com.liatrio.dora.model.GithubDeployment;
 import com.liatrio.dora.model.GithubIssue;
@@ -22,7 +23,16 @@ class ChangeFailureRateCalculatorTest {
 
     @BeforeEach
     void setUp() {
-        calculator = new ChangeFailureRateCalculator();
+        calculator = new ChangeFailureRateCalculator(defaultLabels());
+    }
+
+    private static DoraLabelsProperties defaultLabels() {
+        DoraLabelsProperties props = new DoraLabelsProperties();
+        props.setIncident(List.of("incident", "outage"));
+        props.setBug(List.of("bug", "defect"));
+        props.setHotfix(List.of("hotfix", "hot-fix", "hotpatch"));
+        props.setRevert(List.of("revert", "rollback"));
+        return props;
     }
 
     @Test
@@ -110,6 +120,48 @@ class ChangeFailureRateCalculatorTest {
                 List.of(deploy), List.of(), List.of(), List.of(), 30);
 
         assertEquals(5, result.timeSeries().size());
+    }
+
+    @Test
+    void calculate_customIncidentLabel_sev1_countsFailure() {
+        // Configure "sev1" as an incident label (non-default)
+        DoraLabelsProperties customProps = new DoraLabelsProperties();
+        customProps.setIncident(List.of("sev1", "p0"));
+        customProps.setBug(List.of("bug", "defect"));
+        customProps.setHotfix(List.of("hotfix", "hot-fix", "hotpatch"));
+        customProps.setRevert(List.of("revert", "rollback"));
+        ChangeFailureRateCalculator customCalc = new ChangeFailureRateCalculator(customProps);
+
+        GithubDeployment deploy = buildDeployment(1L, DEPLOY_TIME);
+        // Issue labeled "sev1" opened 1 hour after deploy
+        GithubIssue issue = buildIssue(1L, DEPLOY_TIME.plus(1, ChronoUnit.HOURS), "sev1");
+
+        MetricResult result = customCalc.calculate(
+                List.of(deploy), List.of(), List.of(issue), List.of(), 30);
+
+        assertTrue(result.dataAvailable());
+        assertTrue(result.value() > 0, "Expected failure rate > 0 with custom 'sev1' incident label");
+    }
+
+    @Test
+    void calculate_customHotfixLabel_hotDash_countsFailure() {
+        // Verify that hyphen/underscore equivalence works: "hot-fix" matches "hot_fix"
+        DoraLabelsProperties customProps = new DoraLabelsProperties();
+        customProps.setIncident(List.of("incident"));
+        customProps.setBug(List.of("bug"));
+        customProps.setHotfix(List.of("hot_fix"));
+        customProps.setRevert(List.of("revert"));
+        ChangeFailureRateCalculator customCalc = new ChangeFailureRateCalculator(customProps);
+
+        GithubDeployment deploy = buildDeployment(1L, DEPLOY_TIME);
+        // PR labeled "hot-fix" (hyphen) merged 2h before deploy
+        GithubPullRequest pr = buildPr(1L, DEPLOY_TIME.minus(2, ChronoUnit.HOURS), "hot-fix");
+
+        MetricResult result = customCalc.calculate(
+                List.of(deploy), List.of(pr), List.of(), List.of(), 30);
+
+        assertTrue(result.dataAvailable());
+        assertTrue(result.value() > 0, "Expected failure rate > 0 with hyphen/underscore equivalent label");
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

@@ -23,12 +23,14 @@ public class GitHubCacheService {
     private static final String TYPE_WORKFLOW_RUNS  = "WORKFLOW_RUNS";
     private static final String TYPE_PULL_REQUESTS  = "PULL_REQUESTS";
     private static final String TYPE_ISSUES         = "ISSUES";
+    private static final String TYPE_RELEASES       = "RELEASES";
 
     private final GitHubApiClient apiClient;
     private final GithubDeploymentRepository deploymentRepo;
     private final GithubWorkflowRunRepository workflowRunRepo;
     private final GithubPullRequestRepository pullRequestRepo;
     private final GithubIssueRepository issueRepo;
+    private final GithubReleaseRepository releaseRepo;
     private final GithubCacheEntryRepository cacheEntryRepo;
     private final int ttlMinutes;
 
@@ -38,6 +40,7 @@ public class GitHubCacheService {
             GithubWorkflowRunRepository workflowRunRepo,
             GithubPullRequestRepository pullRequestRepo,
             GithubIssueRepository issueRepo,
+            GithubReleaseRepository releaseRepo,
             GithubCacheEntryRepository cacheEntryRepo,
             @Value("${github.cache.ttl-minutes:15}") int ttlMinutes) {
         this.apiClient = apiClient;
@@ -45,6 +48,7 @@ public class GitHubCacheService {
         this.workflowRunRepo = workflowRunRepo;
         this.pullRequestRepo = pullRequestRepo;
         this.issueRepo = issueRepo;
+        this.releaseRepo = releaseRepo;
         this.cacheEntryRepo = cacheEntryRepo;
         this.ttlMinutes = ttlMinutes;
     }
@@ -111,6 +115,21 @@ public class GitHubCacheService {
     }
 
     @Transactional
+    public List<GithubRelease> getReleases(String owner, String repo, String token, Instant windowStart) {
+        String repoId = owner + "/" + repo;
+        if (isCacheValid(repoId, TYPE_RELEASES)) {
+            log.debug("Cache hit for releases: {}", repoId);
+            return releaseRepo.findByRepoIdAndPublishedAtBetween(repoId, windowStart, Instant.now());
+        }
+        log.debug("Cache miss for releases: {}. Fetching from GitHub.", repoId);
+        releaseRepo.deleteByRepoId(repoId);
+        List<GithubRelease> fresh = apiClient.fetchReleases(owner, repo, token, windowStart);
+        releaseRepo.saveAll(fresh);
+        updateCacheEntry(repoId, TYPE_RELEASES);
+        return fresh;
+    }
+
+    @Transactional
     public void invalidate(String owner, String repo) {
         String repoId = owner + "/" + repo;
         log.info("Invalidating cache for: {}", repoId);
@@ -119,6 +138,7 @@ public class GitHubCacheService {
         workflowRunRepo.deleteByRepoId(repoId);
         pullRequestRepo.deleteByRepoId(repoId);
         issueRepo.deleteByRepoId(repoId);
+        releaseRepo.deleteByRepoId(repoId);
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

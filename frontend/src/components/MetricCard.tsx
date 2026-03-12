@@ -1,6 +1,9 @@
+import { useState } from 'react'
 import type { MetricResult, DoraPerformanceBand } from '../types/metrics'
 import SkeletonCard from './SkeletonCard'
 import TrendChart from './TrendChart'
+import DrilldownPanel from './DrilldownPanel'
+import Sparkline from './Sparkline'
 
 interface MetricCardProps {
   title: string
@@ -24,6 +27,7 @@ const BAND_BG: Record<DoraPerformanceBand, string> = {
 }
 
 export default function MetricCard({ title, result, chartType, loading }: MetricCardProps) {
+  const [expanded, setExpanded] = useState(false)
   if (loading) return <SkeletonCard />
 
   const accentColor = result.band ? BAND_COLORS[result.band] : 'var(--border2)'
@@ -94,25 +98,35 @@ export default function MetricCard({ title, result, chartType, loading }: Metric
       </h3>
 
       {/* Value */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-        <span style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: '2rem',
-          fontWeight: 600,
-          color: accentColor,
-          lineHeight: 1,
-          letterSpacing: '-0.02em',
-        }}>
-          {result.value?.toFixed(1)}
-        </span>
-        <span style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: '0.75rem',
-          color: 'var(--text-muted)',
-          letterSpacing: '0.06em',
-        }}>
-          {result.unit}
-        </span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+          <span style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '2rem',
+            fontWeight: 600,
+            color: accentColor,
+            lineHeight: 1,
+            letterSpacing: '-0.02em',
+          }}>
+            {result.value?.toFixed(1)}
+          </span>
+          <span style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '0.75rem',
+            color: 'var(--text-muted)',
+            letterSpacing: '0.06em',
+          }}>
+            {result.unit}
+          </span>
+        </div>
+        {result.dataAvailable && (result.timeSeries?.length ?? 0) >= 2 && (
+          <Sparkline
+            data={result.timeSeries.map(p => p.value)}
+            color={accentColor}
+            width={64}
+            height={20}
+          />
+        )}
       </div>
 
       {/* Band badge */}
@@ -160,6 +174,35 @@ export default function MetricCard({ title, result, chartType, loading }: Metric
           dataAvailable={result.dataAvailable}
         />
       </div>
+
+      {/* Drilldown toggle */}
+      {result.dataAvailable && result.timeSeries.length > 0 && (
+        <>
+          <button
+            onClick={() => setExpanded(prev => !prev)}
+            style={{
+              alignSelf: 'flex-start',
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '0.6875rem',
+              color: 'var(--text-muted)',
+              letterSpacing: '0.06em',
+            }}
+          >
+            {expanded ? '▲ Hide' : '▼ Details'}
+          </button>
+          {expanded && (
+            <DrilldownPanel
+              timeSeries={result.timeSeries}
+              unit={result.unit ?? ''}
+              metricName={title}
+            />
+          )}
+        </>
+      )}
     </div>
   )
 }

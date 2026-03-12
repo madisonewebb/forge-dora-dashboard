@@ -86,8 +86,12 @@ public class LeadTimeCalculator {
         return new MetricResult(medianHours, "hours", band, true, timeSeries, null);
     }
 
-    private double median(List<Double> sorted) {
-        return sorted.get((sorted.size() - 1) / 2);
+    private static double median(List<Double> sorted) {
+        int size = sorted.size();
+        if (size % 2 == 1) {
+            return sorted.get(size / 2);
+        }
+        return (sorted.get(size / 2 - 1) + sorted.get(size / 2)) / 2.0;
     }
 
     private List<WeekDataPoint> buildWeeklyBuckets(List<PairData> pairs, int windowDays) {

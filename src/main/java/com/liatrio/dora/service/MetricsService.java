@@ -10,6 +10,7 @@ import com.liatrio.dora.metrics.MttrCalculator;
 import com.liatrio.dora.model.GithubDeployment;
 import com.liatrio.dora.model.GithubIssue;
 import com.liatrio.dora.model.GithubPullRequest;
+import com.liatrio.dora.model.GithubRelease;
 import com.liatrio.dora.model.GithubWorkflowRun;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +49,8 @@ public class MetricsService {
 
         List<GithubDeployment> deployments =
                 gitHubCacheService.getDeployments(owner, repo, token, windowStart);
+        List<GithubRelease> releases =
+                gitHubCacheService.getReleases(owner, repo, token, windowStart);
         List<GithubWorkflowRun> workflowRuns =
                 gitHubCacheService.getWorkflowRuns(owner, repo, token, windowStart);
         List<GithubPullRequest> pullRequests =
@@ -55,7 +58,7 @@ public class MetricsService {
         List<GithubIssue> issues =
                 gitHubCacheService.getIssues(owner, repo, token, windowStart);
 
-        MetricResult deployFreq = deploymentFrequencyCalculator.calculate(deployments, workflowRuns, windowDays);
+        MetricResult deployFreq = deploymentFrequencyCalculator.calculate(deployments, releases, workflowRuns, windowDays);
         MetricResult leadTime = leadTimeCalculator.calculate(pullRequests, deployments, windowDays);
         MetricResult cfr = changeFailureRateCalculator.calculate(
                 deployments, pullRequests, issues, workflowRuns, windowDays);

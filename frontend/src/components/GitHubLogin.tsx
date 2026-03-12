@@ -49,6 +49,8 @@ export default function GitHubLogin({ onToken }: GitHubLoginProps) {
         const data = await res.json()
         if (data.access_token) {
           clearInterval(timerRef.current!)
+          const expiresAt = Date.now() + (data.expires_in ?? 28800) * 1000
+          localStorage.setItem('gh_token_expires_at', String(expiresAt))
           onToken(data.access_token)
         } else if (data.error === 'slow_down') {
           setPollIntervalSecs(p => p + 5)
