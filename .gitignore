@@ -27,3 +27,4 @@ logs/
 
 # Spring Boot
 spring-shell.log
+.claude/worktrees/
