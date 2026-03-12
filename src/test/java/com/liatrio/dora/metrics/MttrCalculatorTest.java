@@ -41,11 +41,8 @@ class MttrCalculatorTest {
     }
 
     @Test
-    void calculate_deploymentGapFallback_usedWhenFewIssues() {
-        // Only 1 incident issue (< 3 threshold) → fall back to deployment gaps
-        GithubIssue singleIssue = buildIssue(1L, NOW.minus(5, ChronoUnit.DAYS),
-                NOW.minus(5, ChronoUnit.DAYS).plus(2, ChronoUnit.HOURS));
-
+    void calculate_deploymentGapFallback_usedWhenNoIssues() {
+        // No issues at all → skips signals 1–2, falls back to deployment gaps (signal 3)
         // 3 failure→success pairs with gaps of 2h, 4h, 6h → median = 4h
         Instant base = NOW.minus(20, ChronoUnit.DAYS);
         List<GithubDeployment> deployments = List.of(
@@ -57,25 +54,19 @@ class MttrCalculatorTest {
                 buildDeployment(6L, "success", base.plus(10, ChronoUnit.DAYS).plus(6, ChronoUnit.HOURS))
         );
 
-        MetricResult result = calculator.calculate(List.of(singleIssue), deployments, 30);
+        MetricResult result = calculator.calculate(List.of(), deployments, 30);
 
         assertTrue(result.dataAvailable());
         assertEquals(4.0, result.value(), 0.1);
     }
 
     @Test
-    void calculate_fewerThan3Incidents_returnsNotAvailable() {
-        // 2 closed incident issues and no failed deployments → not available
-        List<GithubIssue> issues = List.of(
-                buildIssue(1L, NOW.minus(5, ChronoUnit.DAYS), NOW.minus(5, ChronoUnit.DAYS).plus(1, ChronoUnit.HOURS)),
-                buildIssue(2L, NOW.minus(3, ChronoUnit.DAYS), NOW.minus(3, ChronoUnit.DAYS).plus(2, ChronoUnit.HOURS))
-        );
-
-        MetricResult result = calculator.calculate(issues, List.of(), 30);
+    void calculate_noIssuesAndNoDeployments_returnsNotAvailable() {
+        // No issues, no deployments — all signals exhausted → not available
+        MetricResult result = calculator.calculate(List.of(), List.of(), 30);
 
         assertFalse(result.dataAvailable());
         assertNotNull(result.message());
-        assertTrue(result.message().contains("incident"), "Message should mention 'incident'");
     }
 
     @Test
