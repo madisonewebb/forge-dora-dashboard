@@ -1,7 +1,9 @@
 name: CD
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
 
 jobs:
@@ -9,9 +11,13 @@ jobs:
     name: Deploy to ECS Fargate
     runs-on: ubuntu-latest
     environment: production
+    # Only deploy when CI passes — prevents shipping broken builds
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -44,11 +50,17 @@ jobs:
           docker push $ECR_REGISTRY/dora-frontend:$IMAGE_TAG
           echo "image=$ECR_REGISTRY/dora-frontend:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
+      - name: Substitute placeholders in task definition
+        env:
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: envsubst < ecs-task-definition.json > ecs-task-definition.rendered.json
+
       - name: Render task definition with new backend image
         id: render-backend
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: ecs-task-definition.json
+          task-definition: ecs-task-definition.rendered.json
           container-name: backend
           image: ${{ steps.build-backend.outputs.image }}
 

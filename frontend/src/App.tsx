@@ -14,6 +14,11 @@ interface DashboardParams {
 }
 
 function App() {
+  // NOTE: Storing the OAuth token in localStorage is convenient but exposes it
+  // to any JavaScript running on the page (XSS risk). A more secure alternative
+  // would be an httpOnly cookie session managed entirely server-side, but that
+  // requires a significant backend refactor. Acceptable for an internal tool with
+  // a trusted deployment environment; revisit if this is exposed publicly.
   const [token, setToken] = useState<string>(() => localStorage.getItem(TOKEN_KEY) ?? '')
   const [view, setView] = useState<View>('form')
   const [params, setParams] = useState<DashboardParams | null>(null)

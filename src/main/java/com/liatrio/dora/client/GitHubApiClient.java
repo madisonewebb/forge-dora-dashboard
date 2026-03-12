@@ -97,7 +97,7 @@ public class GitHubApiClient {
                 results.add(run);
             }
             if (reachedWindow) break;
-            nextUrl = extractNextUrlFromRaw(response);
+            nextUrl = extractNextUrl(response);
         }
         return results;
     }
@@ -218,12 +218,11 @@ public class GitHubApiClient {
     /**
      * Returns true for GitHub responses that mean "stop paginating, use what you have".
      * 422 = pagination depth limit exceeded (GitHub caps at ~1000 results for some endpoints).
-     * 500 = GitHub server error on deep pagination for very large repos.
      * 404 = resource not found (repo has no deployments, actions not enabled, etc.).
      */
     private boolean isPaginationStopSignal(WebClientResponseException e) {
         int status = e.getStatusCode().value();
-        return status == 404 || status == 422 || status == 500;
+        return status == 404 || status == 422;
     }
 
     private void handleRateLimitError(WebClientResponseException e, int attempt) {
@@ -255,10 +254,6 @@ public class GitHubApiClient {
     private String extractNextUrl(ResponseEntity<?> response) {
         String linkHeader = response.getHeaders().getFirst("Link");
         return parseLinkNext(linkHeader);
-    }
-
-    private String extractNextUrlFromRaw(ResponseEntity<?> response) {
-        return extractNextUrl(response);
     }
 
     private String parseLinkNext(String linkHeader) {

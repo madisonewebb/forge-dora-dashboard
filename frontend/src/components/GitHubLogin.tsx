@@ -41,7 +41,11 @@ export default function GitHubLogin({ onToken }: GitHubLoginProps) {
     if (state !== 'awaiting' || !deviceCode) return
     timerRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`/api/auth/device/poll?deviceCode=${encodeURIComponent(deviceCode)}`)
+        const res = await fetch('/api/auth/device/poll', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deviceCode }),
+        })
         const data = await res.json()
         if (data.access_token) {
           clearInterval(timerRef.current!)

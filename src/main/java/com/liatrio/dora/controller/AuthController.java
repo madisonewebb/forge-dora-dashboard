@@ -5,16 +5,17 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.util.Map;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Proxies GitHub's Device Authorization Grant flow so the client_id stays
@@ -47,6 +48,10 @@ public class AuthController {
      */
     @PostMapping("/device/init")
     public Mono<Map<String, Object>> initDevice() {
+        if (clientId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "GitHub OAuth is not configured on this server (GITHUB_CLIENT_ID missing).");
+        }
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("client_id", clientId);
         form.add("scope", "repo");
@@ -61,11 +66,13 @@ public class AuthController {
 
     /**
      * Step 2 — poll until the user authorizes (or the code expires).
+     * Accepts { deviceCode } in the request body to avoid logging the code in access logs.
      * Returns: { access_token, token_type, scope } on success,
      *          { error, error_description } while pending or on failure.
      */
-    @GetMapping("/device/poll")
-    public Mono<Map<String, Object>> pollDevice(@RequestParam String deviceCode) {
+    @PostMapping("/device/poll")
+    public Mono<Map<String, Object>> pollDevice(@RequestBody Map<String, String> body) {
+        String deviceCode = body.get("deviceCode");
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("client_id", clientId);
         form.add("device_code", deviceCode);

@@ -8,6 +8,7 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
 
   frontend:
     build:

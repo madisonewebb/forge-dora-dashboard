@@ -4,11 +4,11 @@
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "512",
   "memory": "1024",
-  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/dora-ecs-execution-role",
+  "executionRoleArn": "arn:aws:iam::${AWS_ACCOUNT_ID}:role/dora-ecs-execution-role",
   "containerDefinitions": [
     {
       "name": "backend",
-      "image": "ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/dora-backend:latest",
+      "image": "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/dora-backend:latest",
       "essential": true,
       "portMappings": [
         {
@@ -20,23 +20,24 @@
         { "name": "SPRING_PROFILES_ACTIVE", "value": "prod" }
       ],
       "secrets": [
-        { "name": "DB_URL",            "valueFrom": "arn:aws:ssm:us-east-1:ACCOUNT_ID:parameter/dora/DB_URL" },
-        { "name": "DB_USERNAME",       "valueFrom": "arn:aws:ssm:us-east-1:ACCOUNT_ID:parameter/dora/DB_USERNAME" },
-        { "name": "DB_PASSWORD",       "valueFrom": "arn:aws:ssm:us-east-1:ACCOUNT_ID:parameter/dora/DB_PASSWORD" },
-        { "name": "ANTHROPIC_API_KEY", "valueFrom": "arn:aws:ssm:us-east-1:ACCOUNT_ID:parameter/dora/ANTHROPIC_API_KEY" }
+        { "name": "DB_URL",            "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dora/DB_URL" },
+        { "name": "DB_USERNAME",       "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dora/DB_USERNAME" },
+        { "name": "DB_PASSWORD",       "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dora/DB_PASSWORD" },
+        { "name": "ANTHROPIC_API_KEY", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dora/ANTHROPIC_API_KEY" },
+        { "name": "GITHUB_CLIENT_ID",  "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dora/GITHUB_CLIENT_ID" }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
           "awslogs-group": "/ecs/dora-task",
-          "awslogs-region": "us-east-1",
+          "awslogs-region": "${AWS_REGION}",
           "awslogs-stream-prefix": "backend"
         }
       }
     },
     {
       "name": "frontend",
-      "image": "ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/dora-frontend:latest",
+      "image": "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/dora-frontend:latest",
       "essential": true,
       "portMappings": [
         {
@@ -57,7 +58,7 @@
         "logDriver": "awslogs",
         "options": {
           "awslogs-group": "/ecs/dora-task",
-          "awslogs-region": "us-east-1",
+          "awslogs-region": "${AWS_REGION}",
           "awslogs-stream-prefix": "frontend"
         }
       }
