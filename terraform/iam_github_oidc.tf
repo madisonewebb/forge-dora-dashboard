@@ -155,19 +155,39 @@ data "aws_iam_policy_document" "terraform_permissions" {
     ]
   }
   statement {
-    sid       = "TerraformStateLock"
-    actions   = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem"]
-    resources = ["arn:aws:dynamodb:*:${data.aws_caller_identity.current.account_id}:table/terraform-state-lock"]
-  }
-  statement {
-    sid       = "CoreInfra"
-    effect    = "Allow"
-    actions   = [
+    sid    = "CoreInfra"
+    effect = "Allow"
+    actions = [
       "ec2:*", "elasticloadbalancing:*", "ecs:*", "ecr:*",
-      "rds:*", "ssm:*", "logs:*", "iam:*", "kms:*",
+      "rds:*", "ssm:*", "logs:*", "kms:*",
       "application-autoscaling:*",
     ]
     resources = ["*"]
+  }
+  # IAM permissions scoped to dora-* resources only to prevent privilege escalation.
+  # This role cannot create or modify IAM resources outside the dora- namespace.
+  statement {
+    sid    = "IAMScopedToProject"
+    effect = "Allow"
+    actions = [
+      "iam:CreateRole", "iam:DeleteRole", "iam:GetRole", "iam:ListRoles",
+      "iam:UpdateRole", "iam:TagRole", "iam:UntagRole",
+      "iam:AttachRolePolicy", "iam:DetachRolePolicy", "iam:ListAttachedRolePolicies",
+      "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:GetRolePolicy", "iam:ListRolePolicies",
+      "iam:CreatePolicy", "iam:DeletePolicy", "iam:GetPolicy", "iam:ListPolicies",
+      "iam:GetPolicyVersion", "iam:CreatePolicyVersion", "iam:DeletePolicyVersion",
+      "iam:ListPolicyVersions", "iam:TagPolicy", "iam:UntagPolicy",
+      "iam:PassRole",
+      "iam:CreateOpenIDConnectProvider", "iam:GetOpenIDConnectProvider",
+      "iam:DeleteOpenIDConnectProvider", "iam:UpdateOpenIDConnectProviderThumbprint",
+      "iam:AddClientIDToOpenIDConnectProvider", "iam:RemoveClientIDFromOpenIDConnectProvider",
+      "iam:ListOpenIDConnectProviders",
+    ]
+    resources = [
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/dora-*",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/dora-*",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com",
+    ]
   }
 }
 

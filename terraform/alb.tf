@@ -16,7 +16,9 @@ resource "aws_lb_target_group" "app" {
   target_type = "ip" # required for Fargate awsvpc networking
 
   health_check {
-    path                = "/actuator/health"
+    # Target the frontend nginx container (port 80), not the Spring Boot backend.
+    # The backend has its own container-level health check via CMD-SHELL curl.
+    path                = "/"
     healthy_threshold   = 2
     unhealthy_threshold = 3
     interval            = 30

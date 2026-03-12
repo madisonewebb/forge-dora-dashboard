@@ -5,6 +5,7 @@
   "cpu": "512",
   "memory": "1024",
   "executionRoleArn": "arn:aws:iam::${AWS_ACCOUNT_ID}:role/dora-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::${AWS_ACCOUNT_ID}:role/dora-ecs-task-role",
   "containerDefinitions": [
     {
       "name": "backend",
@@ -51,7 +52,7 @@
       "dependsOn": [
         {
           "containerName": "backend",
-          "condition": "START"
+          "condition": "HEALTHY"
         }
       ],
       "logConfiguration": {

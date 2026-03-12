@@ -46,8 +46,8 @@ jobs:
           tags: |
             ${{ steps.ecr-login.outputs.registry }}/dora-backend:${{ github.event.workflow_run.head_sha }}
             ${{ steps.ecr-login.outputs.registry }}/dora-backend:latest
-          cache-from: type=registry,ref=${{ steps.ecr-login.outputs.registry }}/dora-backend:latest
-          cache-to: type=inline
+          cache-from: type=registry,ref=${{ steps.ecr-login.outputs.registry }}/dora-backend:cache
+          cache-to: type=registry,ref=${{ steps.ecr-login.outputs.registry }}/dora-backend:cache,mode=max
 
       - name: Build and push frontend image
         id: build-frontend
@@ -59,8 +59,8 @@ jobs:
           tags: |
             ${{ steps.ecr-login.outputs.registry }}/dora-frontend:${{ github.event.workflow_run.head_sha }}
             ${{ steps.ecr-login.outputs.registry }}/dora-frontend:latest
-          cache-from: type=registry,ref=${{ steps.ecr-login.outputs.registry }}/dora-frontend:latest
-          cache-to: type=inline
+          cache-from: type=registry,ref=${{ steps.ecr-login.outputs.registry }}/dora-frontend:cache
+          cache-to: type=registry,ref=${{ steps.ecr-login.outputs.registry }}/dora-frontend:cache,mode=max
 
       - name: Substitute placeholders in task definition
         env:

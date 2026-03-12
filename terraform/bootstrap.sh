@@ -18,13 +18,12 @@ set -euo pipefail
 REGION="${AWS_REGION:-us-east-1}"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 BUCKET="dora-terraform-state-${ACCOUNT_ID}-${REGION}"
-TABLE="terraform-state-lock"
 
 echo "==> Bootstrapping Terraform remote state"
 echo "    Account : $ACCOUNT_ID"
 echo "    Region  : $REGION"
 echo "    Bucket  : $BUCKET"
-echo "    Table   : $TABLE"
+echo "    Locking : S3 native (use_lockfile = true, no DynamoDB needed)"
 echo ""
 
 # ── S3 bucket ────────────────────────────────────────────────────────────────
@@ -67,36 +66,20 @@ aws s3api put-public-access-block \
 
 echo "✓ S3 bucket configured"
 
-# ── DynamoDB lock table ───────────────────────────────────────────────────────
-
-if aws dynamodb describe-table --table-name "$TABLE" --region "$REGION" 2>/dev/null; then
-  echo "✓ DynamoDB table already exists: $TABLE"
-else
-  echo "--> Creating DynamoDB lock table..."
-  aws dynamodb create-table \
-    --table-name "$TABLE" \
-    --attribute-definitions AttributeName=LockID,AttributeType=S \
-    --key-schema AttributeName=LockID,KeyType=HASH \
-    --billing-mode PAY_PER_REQUEST \
-    --region "$REGION"
-
-  echo "--> Waiting for table to become active..."
-  aws dynamodb wait table-exists --table-name "$TABLE" --region "$REGION"
-  echo "✓ DynamoDB table created"
-fi
-
 # ── Print backend config ──────────────────────────────────────────────────────
+# Terraform 1.10+ supports S3 native locking (use_lockfile = true) via
+# conditional writes, so no DynamoDB table is required.
 
 cat <<EOF
 
 ==> Bootstrap complete. Enable remote state in terraform/main.tf:
 
   backend "s3" {
-    bucket         = "$BUCKET"
-    key            = "dora-dashboard/terraform.tfstate"
-    region         = "$REGION"
-    dynamodb_table = "$TABLE"
-    encrypt        = true
+    bucket       = "$BUCKET"
+    key          = "dora-dashboard/terraform.tfstate"
+    region       = "$REGION"
+    encrypt      = true
+    use_lockfile = true
   }
 
 Then run: terraform init -migrate-state

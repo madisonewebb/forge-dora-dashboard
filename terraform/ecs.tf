@@ -136,7 +136,11 @@ resource "aws_ecs_service" "app" {
     aws_iam_role_policy_attachment.ecs_execution_managed,
   ]
 
-  # Ignore task_definition changes — the CD pipeline updates the service directly
+  # IMPORTANT: task_definition is intentionally ignored here.
+  # The CD pipeline (cd.yml) owns image updates via aws-actions/amazon-ecs-deploy-task-definition.
+  # Consequence: changes to ecs_task_cpu, ecs_task_memory, container environment, or secrets
+  # in this file will NOT take effect on `terraform apply` — you must force a new task
+  # definition revision manually or via a CD deploy after changing those values.
   lifecycle {
     ignore_changes = [task_definition]
   }
