@@ -3,6 +3,7 @@ package com.liatrio.dora.metrics;
 import com.liatrio.dora.dto.DoraPerformanceBand;
 import com.liatrio.dora.dto.MetricResult;
 import com.liatrio.dora.model.GithubDeployment;
+import com.liatrio.dora.model.GithubWorkflowRun;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +28,7 @@ class DeploymentFrequencyCalculatorTest {
         // 60 successful deployments over 30 days = 2.0/day → ELITE
         List<GithubDeployment> deployments = buildDeployments(60, "success", 30);
 
-        MetricResult result = calculator.calculate(deployments, 30);
+        MetricResult result = calculator.calculate(deployments, List.of(), 30);
 
         assertTrue(result.dataAvailable());
         assertEquals(DoraPerformanceBand.ELITE, result.band());
@@ -37,7 +38,7 @@ class DeploymentFrequencyCalculatorTest {
 
     @Test
     void calculate_noSuccessDeployments_returnsNotAvailable() {
-        MetricResult result = calculator.calculate(List.of(), 30);
+        MetricResult result = calculator.calculate(List.of(), List.of(), 30);
 
         assertFalse(result.dataAvailable());
         assertNotNull(result.message());
@@ -50,7 +51,7 @@ class DeploymentFrequencyCalculatorTest {
         deployments.addAll(buildDeployments(5, "failure", 30));
         deployments.addAll(buildDeployments(3, "success", 30));
 
-        MetricResult result = calculator.calculate(deployments, 30);
+        MetricResult result = calculator.calculate(deployments, List.of(), 30);
 
         assertTrue(result.dataAvailable());
         assertEquals(3.0 / 30, result.value(), 0.01);
@@ -61,7 +62,7 @@ class DeploymentFrequencyCalculatorTest {
         // ceil(30/7) = 5 buckets
         List<GithubDeployment> deployments = buildDeployments(10, "success", 30);
 
-        MetricResult result = calculator.calculate(deployments, 30);
+        MetricResult result = calculator.calculate(deployments, List.of(), 30);
 
         assertTrue(result.dataAvailable());
         assertEquals(5, result.timeSeries().size());
@@ -72,7 +73,7 @@ class DeploymentFrequencyCalculatorTest {
         // ceil(90/7) = 13 buckets
         List<GithubDeployment> deployments = buildDeployments(30, "success", 90);
 
-        MetricResult result = calculator.calculate(deployments, 90);
+        MetricResult result = calculator.calculate(deployments, List.of(), 90);
 
         assertTrue(result.dataAvailable());
         assertEquals(13, result.timeSeries().size());
@@ -83,7 +84,7 @@ class DeploymentFrequencyCalculatorTest {
         // 1 deploy / 60 days ≈ 0.017/day → LOW
         List<GithubDeployment> deployments = buildDeployments(1, "success", 60);
 
-        MetricResult result = calculator.calculate(deployments, 60);
+        MetricResult result = calculator.calculate(deployments, List.of(), 60);
 
         assertTrue(result.dataAvailable());
         assertEquals(DoraPerformanceBand.LOW, result.band());

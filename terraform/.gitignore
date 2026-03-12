@@ -1,0 +1,9 @@
+# Local variable files with secrets
+terraform.tfvars
+*.auto.tfvars
+
+# Terraform state — use remote state (S3 + DynamoDB) instead
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
