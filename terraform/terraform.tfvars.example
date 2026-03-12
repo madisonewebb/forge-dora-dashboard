@@ -1,0 +1,19 @@
+# Copy this file to terraform.tfvars and fill in the values.
+# terraform.tfvars is gitignored — never commit secrets.
+
+aws_region  = "us-east-1"
+environment = "production"
+
+# Secrets — use a secrets manager or CI/CD environment variables in practice
+db_password       = "change-me"
+anthropic_api_key = "sk-ant-..."
+github_client_id  = "Ov23li..."
+
+# Optional: provide an ACM certificate ARN to enable HTTPS
+# acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/..."
+
+# Optional overrides
+# db_instance_class         = "db.t3.micro"
+# ecs_task_cpu              = "512"
+# ecs_task_memory           = "1024"
+# ecs_service_desired_count = 1
