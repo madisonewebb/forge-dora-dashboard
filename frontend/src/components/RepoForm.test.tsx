@@ -11,7 +11,7 @@ describe('RepoForm', () => {
   it('renders owner/repo field and time window selector', () => {
     render(<RepoForm onSubmit={vi.fn()} onLogout={vi.fn()} loading={false} />)
     expect(screen.getByLabelText(/owner\/repo/i)).toBeInTheDocument()
-    expect(screen.getByRole('group', { name: /time window/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '30d' })).toBeInTheDocument()
   })
 
   it('shows validation error for invalid owner/repo format', async () => {
@@ -20,7 +20,7 @@ describe('RepoForm', () => {
 
     render(<RepoForm onSubmit={vi.fn()} onLogout={vi.fn()} loading={false} />)
     await userEvent.type(screen.getByLabelText(/owner\/repo/i), 'liatrio')
-    fireEvent.click(screen.getByRole('button', { name: /load metrics/i }))
+    fireEvent.click(screen.getByRole('button', { name: /analyze/i }))
 
     expect(await screen.findByText(/format must be owner\/repo/i)).toBeInTheDocument()
     expect(mockFetch).not.toHaveBeenCalled()
@@ -31,7 +31,7 @@ describe('RepoForm', () => {
     render(<RepoForm onSubmit={mockSubmit} onLogout={vi.fn()} loading={false} />)
 
     await userEvent.type(screen.getByLabelText(/owner\/repo/i), 'liatrio/liatrio')
-    fireEvent.click(screen.getByRole('button', { name: /load metrics/i }))
+    fireEvent.click(screen.getByRole('button', { name: /analyze/i }))
 
     await waitFor(() => {
       expect(mockSubmit).toHaveBeenCalledWith('liatrio', 'liatrio', 30)
@@ -40,6 +40,6 @@ describe('RepoForm', () => {
 
   it('disables submit button when loading', () => {
     render(<RepoForm onSubmit={vi.fn()} onLogout={vi.fn()} loading={true} />)
-    expect(screen.getByRole('button', { name: /loading/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /loading…/i })).toBeDisabled()
   })
 })

@@ -24,7 +24,7 @@ describe('InsightsPanel', () => {
   it('renders analyzing placeholder on mount', () => {
     vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})))
     render(<InsightsPanel owner="liatrio" repo="liatrio" token="abc" days={30} />)
-    expect(screen.getByText(/analyzing your metrics/i)).toBeInTheDocument()
+    expect(screen.getByText(/analyzing metrics/i)).toBeInTheDocument()
   })
 
   it('appends tokens progressively and hides placeholder', async () => {
@@ -34,7 +34,7 @@ describe('InsightsPanel', () => {
     render(<InsightsPanel owner="liatrio" repo="liatrio" token="abc" days={30} />)
 
     await waitFor(() =>
-      expect(screen.queryByText(/analyzing your metrics/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/analyzing metrics/i)).not.toBeInTheDocument()
     )
     expect(screen.getByText(/Hello world/)).toBeInTheDocument()
   })
@@ -46,7 +46,7 @@ describe('InsightsPanel', () => {
     render(<InsightsPanel owner="liatrio" repo="liatrio" token="abc" days={30} />)
 
     await waitFor(() =>
-      expect(screen.getByText(/AI insights are currently unavailable/i)).toBeInTheDocument()
+      expect(screen.getByText(/AI insights unavailable/i)).toBeInTheDocument()
     )
   })
 
@@ -60,6 +60,6 @@ describe('InsightsPanel', () => {
     await user.click(screen.getByRole('button', { name: /regenerate/i }))
 
     expect(mockFetch).toHaveBeenCalledTimes(2)
-    expect(screen.getByText(/analyzing your metrics/i)).toBeInTheDocument()
+    expect(screen.getByText(/analyzing metrics/i)).toBeInTheDocument()
   })
 })

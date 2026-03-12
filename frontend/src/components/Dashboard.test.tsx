@@ -50,9 +50,9 @@ describe('Dashboard', () => {
     render(
       <Dashboard owner="liatrio" repo="liatrio" token="tok" initialDays={30} onBack={vi.fn()} onLogout={vi.fn()} />
     )
-    expect(screen.getByRole('button', { name: '30 days' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '90 days' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '180 days' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '30d' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '90d' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '180d' })).toBeInTheDocument()
   })
 
   it('selecting 90 days triggers a new fetch with days=90', async () => {
@@ -60,7 +60,7 @@ describe('Dashboard', () => {
     render(
       <Dashboard owner="liatrio" repo="liatrio" token="tok" initialDays={30} onBack={vi.fn()} onLogout={vi.fn()} />
     )
-    await userEvent.click(screen.getByRole('button', { name: '90 days' }))
+    await userEvent.click(screen.getByRole('button', { name: '90d' }))
     await waitFor(() => {
       const calls = (fetch as ReturnType<typeof vi.fn>).mock.calls
       expect(calls.some((args: unknown[]) => String(args[0]).includes('days=90'))).toBe(true)
@@ -105,7 +105,7 @@ describe('Dashboard', () => {
     render(
       <Dashboard owner="liatrio" repo="liatrio" token="tok" initialDays={30} onBack={onBack} onLogout={vi.fn()} />
     )
-    await userEvent.click(screen.getByRole('button', { name: /change repository/i }))
+    await userEvent.click(screen.getByRole('button', { name: '← Change' }))
     expect(onBack).toHaveBeenCalledOnce()
   })
 })

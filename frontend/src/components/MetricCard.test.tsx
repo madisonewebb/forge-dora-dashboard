@@ -44,10 +44,10 @@ describe('MetricCard', () => {
     )
     const badge = screen.getByText('ELITE')
     expect(badge).toBeInTheDocument()
-    expect(badge).toHaveStyle({ backgroundColor: '#22c55e' })
+    expect(badge).toHaveStyle({ color: '#A8FF35' })
   })
 
-  it('renders LOW badge with red color #ef4444', () => {
+  it('renders LOW badge with red color #FF5B5B', () => {
     render(
       <MetricCard
         title="Change Failure Rate"
@@ -57,7 +57,7 @@ describe('MetricCard', () => {
     )
     const badge = screen.getByText('LOW')
     expect(badge).toBeInTheDocument()
-    expect(badge).toHaveStyle({ backgroundColor: '#ef4444' })
+    expect(badge).toHaveStyle({ color: '#FF5B5B' })
   })
 
   it('renders not-enough-data state when dataAvailable is false', () => {
@@ -75,7 +75,7 @@ describe('MetricCard', () => {
       />
     )
     expect(screen.getByText('MTTR')).toBeInTheDocument()
-    expect(screen.getByText(/not enough data/i)).toBeInTheDocument()
+    expect(screen.getByText(/no data/i)).toBeInTheDocument()
     expect(screen.getByText('No deployment data found')).toBeInTheDocument()
     expect(screen.queryByText(/deploys\/day/)).not.toBeInTheDocument()
   })
