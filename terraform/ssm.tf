@@ -13,7 +13,7 @@ resource "aws_ssm_parameter" "db_url" {
 
 resource "aws_ssm_parameter" "db_username" {
   name  = "/dora/DB_USERNAME"
-  type  = "SecureString"
+  type  = "String" # not sensitive — avoids unnecessary KMS decrypt on every task startup
   value = "dora"
 
   tags = { Name = "dora/DB_USERNAME" }

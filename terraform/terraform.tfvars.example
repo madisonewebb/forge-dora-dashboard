@@ -14,7 +14,8 @@ github_client_id  = "Ov23li..."
 # acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/..."
 
 # Optional overrides
-# db_instance_class         = "db.t3.micro"
+# db_instance_class = "db.t3.micro"   # default — fine for internal/low-traffic use
+#                   = "db.t3.small"   # recommended minimum for sustained prod traffic
 # ecs_task_cpu              = "512"
 # ecs_task_memory           = "1024"
 # ecs_service_desired_count = 1

@@ -32,14 +32,10 @@ data "aws_iam_policy_document" "ssm_read" {
   }
 
   statement {
-    sid       = "DecryptSSMKMS"
-    actions   = ["kms:Decrypt"]
-    resources = ["*"]
-    condition {
-      test     = "StringEquals"
-      variable = "kms:ViaService"
-      values   = ["ssm.${var.aws_region}.amazonaws.com"]
-    }
+    sid     = "DecryptSSMKMS"
+    actions = ["kms:Decrypt"]
+    # Scoped to the AWS-managed SSM key only, not all keys in the account.
+    resources = ["arn:aws:kms:${var.aws_region}:${data.aws_caller_identity.current.account_id}:alias/aws/ssm"]
   }
 }
 
