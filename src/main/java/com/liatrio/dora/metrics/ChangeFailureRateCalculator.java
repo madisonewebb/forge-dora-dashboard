@@ -39,7 +39,7 @@ public class ChangeFailureRateCalculator {
                                   List<GithubWorkflowRun> workflowRuns,
                                   int windowDays) {
         if (deployments.isEmpty()) {
-            return MetricResult.notAvailable("No deployment data found.");
+            return calculateFromWorkflowRuns(workflowRuns, pullRequests, windowDays);
         }
 
         // Use a Set of deployment githubIds to deduplicate across signals
@@ -85,6 +85,72 @@ public class ChangeFailureRateCalculator {
 
         log.debug("Change failure rate: {}% ({})", cfr, band);
         return new MetricResult(cfr, "%", band, true, timeSeries, null);
+    }
+
+    private MetricResult calculateFromWorkflowRuns(List<GithubWorkflowRun> workflowRuns,
+                                                    List<GithubPullRequest> pullRequests,
+                                                    int windowDays) {
+        List<GithubWorkflowRun> completed = workflowRuns.stream()
+                .filter(r -> "completed".equals(r.getStatus()))
+                .filter(r -> "success".equals(r.getConclusion()) || "failure".equals(r.getConclusion()))
+                .toList();
+
+        // Also count revert/hotfix/bug PRs as a failure signal
+        long revertPrs = pullRequests.stream()
+                .filter(pr -> pr.getMergedAt() != null)
+                .filter(pr -> hasAnyLabel(pr.getLabels(), FAILURE_PR_LABELS))
+                .count();
+
+        long total = completed.size() + revertPrs;
+        if (total == 0) {
+            return MetricResult.notAvailable("No deployment data found.");
+        }
+
+        long failedRuns = completed.stream()
+                .filter(r -> "failure".equals(r.getConclusion()))
+                .count();
+        long effectiveFailures = Math.max(failedRuns, revertPrs);
+
+        double cfr = (double) effectiveFailures / total * 100.0;
+        DoraPerformanceBand band = DoraPerformanceBand.forChangeFailureRate(cfr);
+        List<WeekDataPoint> timeSeries = buildWorkflowWeeklyBuckets(completed, windowDays);
+
+        log.debug("Change failure rate (CI proxy): {}% ({})", cfr, band);
+        return new MetricResult(cfr, "%", band, true, timeSeries,
+                "Based on CI workflow failures on main (no GitHub Deployments configured)");
+    }
+
+    private List<WeekDataPoint> buildWorkflowWeeklyBuckets(List<GithubWorkflowRun> runs, int windowDays) {
+        Instant windowStart = Instant.now().minus(windowDays, ChronoUnit.DAYS);
+        LocalDate startDate = windowStart.atZone(ZoneOffset.UTC).toLocalDate();
+        LocalDate weekCursor = startDate.with(WeekFields.ISO.dayOfWeek(), 1);
+        if (weekCursor.isAfter(startDate)) weekCursor = weekCursor.minusWeeks(1);
+
+        int bucketCount = (int) Math.ceil(windowDays / 7.0);
+        List<WeekDataPoint> buckets = new ArrayList<>();
+
+        for (int i = 0; i < bucketCount; i++) {
+            final LocalDate weekStart = weekCursor;
+            final LocalDate weekEnd = weekStart.plusWeeks(1);
+
+            List<GithubWorkflowRun> weekRuns = runs.stream()
+                    .filter(r -> {
+                        LocalDate d = r.getCreatedAt().atZone(ZoneOffset.UTC).toLocalDate();
+                        return !d.isBefore(weekStart) && d.isBefore(weekEnd);
+                    })
+                    .toList();
+
+            double weekCfr = 0.0;
+            if (!weekRuns.isEmpty()) {
+                long failures = weekRuns.stream().filter(r -> "failure".equals(r.getConclusion())).count();
+                weekCfr = (double) failures / weekRuns.size() * 100.0;
+            }
+
+            buckets.add(new WeekDataPoint(weekStart, weekCfr));
+            weekCursor = weekCursor.plusWeeks(1);
+        }
+
+        return buckets;
     }
 
     private boolean hasAnyLabel(String labelsField, Set<String> targets) {

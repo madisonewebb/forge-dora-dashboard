@@ -3,17 +3,22 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # Use Docker's internal DNS resolver; re-resolve every 10s so nginx handles
+    # backend container restarts without needing its own restart.
+    resolver 127.0.0.11 valid=10s;
+    set $backend ${BACKEND_HOST};
+
     add_header X-Content-Type-Options nosniff;
     add_header X-Frame-Options DENY;
 
     location /api/ {
-        proxy_pass http://${BACKEND_HOST}:8080;
+        proxy_pass http://$backend:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
 
     location /actuator/ {
-        proxy_pass http://${BACKEND_HOST}:8080;
+        proxy_pass http://$backend:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }

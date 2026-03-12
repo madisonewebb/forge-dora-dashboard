@@ -10,7 +10,7 @@ interface InsightsPanelProps {
 
 type StreamStatus = 'analyzing' | 'streaming' | 'complete' | 'error'
 
-function InsightsPanel({ owner, repo, token, days }: InsightsPanelProps) {
+export default function InsightsPanel({ owner, repo, token, days }: InsightsPanelProps) {
   const [content, setContent] = useState('')
   const [status, setStatus] = useState<StreamStatus>('analyzing')
   const abortRef = useRef<AbortController | null>(null)
@@ -29,10 +29,7 @@ function InsightsPanel({ owner, repo, token, days }: InsightsPanelProps) {
         signal: controller.signal,
       })
 
-      if (!res.ok || !res.body) {
-        setStatus('error')
-        return
-      }
+      if (!res.ok || !res.body) { setStatus('error'); return }
 
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
@@ -47,9 +44,7 @@ function InsightsPanel({ owner, repo, token, days }: InsightsPanelProps) {
         buffer = parts.pop() ?? ''
         for (const part of parts) {
           for (const line of part.split('\n')) {
-            if (line.startsWith('data: ')) {
-              setContent(prev => prev + line.slice(6))
-            }
+            if (line.startsWith('data: ')) setContent(prev => prev + line.slice(6))
           }
         }
       }
@@ -64,50 +59,137 @@ function InsightsPanel({ owner, repo, token, days }: InsightsPanelProps) {
   useEffect(() => {
     openStream()
     return () => { abortRef.current?.abort() }
-    // openStream is intentionally omitted: it captures owner/repo/token/days via closure
-    // and recreating it on every render would cause infinite re-fetches
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [owner, repo, token, days])
 
   return (
-    <div
-      style={{
-        background: '#f0f7ff',
-        borderRadius: 8,
-        padding: '1.5rem',
-        marginTop: '1.5rem',
-      }}
-    >
+    <div style={{
+      background: 'var(--surface)',
+      border: '1px solid var(--border)',
+      borderLeft: '3px solid var(--teal)',
+      borderRadius: 10,
+      padding: '1.5rem',
+      marginTop: '1rem',
+      animation: 'fadeUp 0.4s ease both',
+    }}>
+      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1.1rem' }}>✨ AI Insights</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ color: 'var(--teal)', fontSize: '1rem' }}>✦</span>
+          <h2 style={{
+            fontFamily: 'var(--font-head)',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+            color: 'var(--teal)',
+            margin: 0,
+          }}>
+            AI Insights
+          </h2>
+          {(status === 'analyzing' || status === 'streaming') && (
+            <span style={{
+              width: 6, height: 6,
+              borderRadius: '50%',
+              background: 'var(--teal)',
+              display: 'inline-block',
+              animation: 'blink 1s step-end infinite',
+            }} />
+          )}
+        </div>
         <button
           onClick={openStream}
           style={{
             background: 'none',
-            border: '1px solid #3b82f6',
-            color: '#3b82f6',
+            border: '1px solid var(--border)',
             borderRadius: 6,
-            padding: '0.25rem 0.75rem',
+            color: 'var(--text-muted)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: '0.6875rem',
+            letterSpacing: '0.06em',
+            padding: '0.25rem 0.625rem',
             cursor: 'pointer',
-            fontSize: '0.875rem',
+            transition: 'border-color 0.15s, color 0.15s',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.borderColor = 'var(--teal)'
+            e.currentTarget.style.color = 'var(--teal)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.borderColor = 'var(--border)'
+            e.currentTarget.style.color = 'var(--text-muted)'
           }}
         >
-          Regenerate
+          regenerate
         </button>
       </div>
 
       {status === 'analyzing' && (
-        <>
-          <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
-          <p style={{ color: '#6b7280', fontStyle: 'italic', animation: 'pulse 1.5s ease-in-out infinite' }}>Analyzing your metrics...</p>
-        </>
+        <p style={{
+          color: 'var(--text-muted)',
+          fontFamily: 'var(--font-mono)',
+          fontSize: '0.8125rem',
+          fontStyle: 'italic',
+        }}>
+          Analyzing metrics
+          <span style={{ animation: 'blink 1s step-end infinite' }}>_</span>
+        </p>
       )}
 
       {(status === 'streaming' || status === 'complete') && (
-        <div>
-          <ReactMarkdown>{content}</ReactMarkdown>
+        <div style={{
+          color: 'var(--text)',
+          fontSize: '0.875rem',
+          lineHeight: 1.7,
+          fontFamily: 'var(--font-ui)',
+        }}>
+          <style>{`
+            .insights-content p { margin: 0 0 0.75rem; }
+            .insights-content p:last-child { margin-bottom: 0; }
+            .insights-content h1, .insights-content h2, .insights-content h3 {
+              font-family: var(--font-head);
+              font-weight: 700;
+              letter-spacing: 0.06em;
+              text-transform: uppercase;
+              color: var(--teal);
+              margin: 1rem 0 0.5rem;
+              font-size: 0.75rem;
+            }
+            .insights-content strong { color: var(--text); }
+            .insights-content ul, .insights-content ol { padding-left: 1.25rem; margin: 0 0 0.75rem; }
+            .insights-content li { margin-bottom: 0.25rem; }
+            .insights-content code {
+              font-family: var(--font-mono);
+              font-size: 0.8125rem;
+              background: var(--surface2);
+              border: 1px solid var(--border);
+              border-radius: 3px;
+              padding: 0.1em 0.35em;
+              color: var(--lime);
+            }
+          `}</style>
+          <div className="insights-content">
+            <ReactMarkdown>{content}</ReactMarkdown>
+          </div>
+          {status === 'streaming' && (
+            <span style={{
+              display: 'inline-block',
+              width: 8, height: 14,
+              background: 'var(--teal)',
+              marginLeft: 2,
+              animation: 'blink 0.7s step-end infinite',
+              verticalAlign: 'text-bottom',
+            }} />
+          )}
           {status === 'complete' && (
-            <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '1rem' }}>
+            <p style={{
+              marginTop: '1rem',
+              paddingTop: '0.75rem',
+              borderTop: '1px solid var(--border)',
+              fontSize: '0.6875rem',
+              color: 'var(--text-dim)',
+              fontFamily: 'var(--font-mono)',
+            }}>
               Generated by Claude
             </p>
           )}
@@ -115,10 +197,14 @@ function InsightsPanel({ owner, repo, token, days }: InsightsPanelProps) {
       )}
 
       {status === 'error' && (
-        <p style={{ color: '#ef4444' }}>AI insights are currently unavailable.</p>
+        <p style={{
+          color: 'var(--text-muted)',
+          fontFamily: 'var(--font-mono)',
+          fontSize: '0.8125rem',
+        }}>
+          AI insights unavailable.
+        </p>
       )}
     </div>
   )
 }
-
-export default InsightsPanel

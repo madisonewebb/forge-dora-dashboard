@@ -184,6 +184,10 @@ public class GitHubApiClient {
                         .toEntity((Class<List<Map<String, Object>>>) (Class<?>) List.class)
                         .block();
             } catch (WebClientResponseException e) {
+                if (isPaginationStopSignal(e)) {
+                    log.warn("GitHub pagination stopped at {} ({}), returning partial results", url, e.getStatusCode());
+                    return ResponseEntity.ok(List.of());
+                }
                 handleRateLimitError(e, attempt);
             }
         }
@@ -201,10 +205,25 @@ public class GitHubApiClient {
                         .toEntity((Class<Map<String, Object>>) (Class<?>) Map.class)
                         .block();
             } catch (WebClientResponseException e) {
+                if (isPaginationStopSignal(e)) {
+                    log.warn("GitHub pagination stopped at {} ({}), returning partial results", url, e.getStatusCode());
+                    return ResponseEntity.ok(Map.of());
+                }
                 handleRateLimitError(e, attempt);
             }
         }
         throw new GitHubRateLimitException(Instant.now().plusSeconds(3600));
+    }
+
+    /**
+     * Returns true for GitHub responses that mean "stop paginating, use what you have".
+     * 422 = pagination depth limit exceeded (GitHub caps at ~1000 results for some endpoints).
+     * 500 = GitHub server error on deep pagination for very large repos.
+     * 404 = resource not found (repo has no deployments, actions not enabled, etc.).
+     */
+    private boolean isPaginationStopSignal(WebClientResponseException e) {
+        int status = e.getStatusCode().value();
+        return status == 404 || status == 422 || status == 500;
     }
 
     private void handleRateLimitError(WebClientResponseException e, int attempt) {

@@ -10,68 +10,152 @@ interface MetricCardProps {
 }
 
 const BAND_COLORS: Record<DoraPerformanceBand, string> = {
-  ELITE: '#22c55e',
-  HIGH: '#3b82f6',
-  MEDIUM: '#f59e0b',
-  LOW: '#ef4444',
+  ELITE:  '#A8FF35',
+  HIGH:   '#00D4A8',
+  MEDIUM: '#FFB547',
+  LOW:    '#FF5B5B',
 }
 
-function MetricCard({ title, result, chartType, loading }: MetricCardProps) {
-  if (loading) {
-    return <SkeletonCard />
-  }
+const BAND_BG: Record<DoraPerformanceBand, string> = {
+  ELITE:  'rgba(168,255,53,0.1)',
+  HIGH:   'rgba(0,212,168,0.1)',
+  MEDIUM: 'rgba(255,181,71,0.1)',
+  LOW:    'rgba(255,91,91,0.1)',
+}
 
-  const cardStyle = {
-    background: 'white',
-    borderRadius: 8,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+export default function MetricCard({ title, result, chartType, loading }: MetricCardProps) {
+  if (loading) return <SkeletonCard />
+
+  const accentColor = result.band ? BAND_COLORS[result.band] : 'var(--border2)'
+
+  const cardStyle: React.CSSProperties = {
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
+    borderLeft: `3px solid ${accentColor}`,
+    borderRadius: 10,
     padding: '1.5rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.75rem',
+    animation: 'fadeUp 0.4s ease both',
+    transition: 'border-color 0.2s',
   }
 
   if (!result.dataAvailable) {
     return (
-      <div style={cardStyle}>
-        <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', fontWeight: 600, color: '#6b7280' }}>
+      <div style={{ ...cardStyle, borderLeftColor: 'var(--border)' }}>
+        <h3 style={{
+          fontFamily: 'var(--font-head)',
+          fontSize: '0.75rem',
+          fontWeight: 700,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color: 'var(--text-muted)',
+        }}>
           {title}
         </h3>
-        <p style={{ margin: '0 0 0.5rem', fontWeight: 600, color: '#374151' }}>Not enough data</p>
+        <p style={{
+          fontFamily: 'var(--font-head)',
+          fontSize: '1.125rem',
+          fontWeight: 600,
+          letterSpacing: '0.04em',
+          color: 'var(--text-dim)',
+          textTransform: 'uppercase',
+        }}>
+          No data
+        </p>
         {result.message && (
-          <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>{result.message}</p>
+          <p style={{
+            fontSize: '0.75rem',
+            color: 'var(--text-muted)',
+            fontFamily: 'var(--font-mono)',
+            lineHeight: 1.5,
+          }}>
+            {result.message}
+          </p>
         )}
       </div>
     )
   }
 
-  const badgeColor = result.band ? BAND_COLORS[result.band] : '#9ca3af'
-
   return (
     <div style={cardStyle}>
-      <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', fontWeight: 600, color: '#6b7280' }}>
+      {/* Title */}
+      <h3 style={{
+        fontFamily: 'var(--font-head)',
+        fontSize: '0.75rem',
+        fontWeight: 700,
+        letterSpacing: '0.12em',
+        textTransform: 'uppercase',
+        color: 'var(--text-muted)',
+        margin: 0,
+      }}>
         {title}
       </h3>
-      <p style={{ margin: '0 0 0.75rem', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>
-        {result.value?.toFixed(1)} {result.unit}
-      </p>
+
+      {/* Value */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+        <span style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: '2rem',
+          fontWeight: 600,
+          color: accentColor,
+          lineHeight: 1,
+          letterSpacing: '-0.02em',
+        }}>
+          {result.value?.toFixed(1)}
+        </span>
+        <span style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: '0.75rem',
+          color: 'var(--text-muted)',
+          letterSpacing: '0.06em',
+        }}>
+          {result.unit}
+        </span>
+      </div>
+
+      {/* Band badge */}
       {result.band && (
-        <span
-          style={{
-            display: 'inline-block',
-            backgroundColor: badgeColor,
-            color: 'white',
-            borderRadius: 9999,
-            padding: '2px 10px',
-            fontSize: '0.75rem',
-            fontWeight: 600,
-          }}
-        >
+        <span style={{
+          display: 'inline-block',
+          alignSelf: 'flex-start',
+          background: BAND_BG[result.band],
+          color: accentColor,
+          border: `1px solid ${accentColor}30`,
+          borderRadius: 4,
+          padding: '2px 8px',
+          fontFamily: 'var(--font-head)',
+          fontSize: '0.6875rem',
+          fontWeight: 700,
+          letterSpacing: '0.15em',
+          textTransform: 'uppercase',
+        }}>
           {result.band}
         </span>
       )}
-      <div style={{ marginTop: '1rem' }}>
+
+      {/* Note */}
+      {result.message && (
+        <p style={{
+          fontSize: '0.6875rem',
+          color: 'var(--text-muted)',
+          fontFamily: 'var(--font-mono)',
+          lineHeight: 1.4,
+          borderTop: '1px solid var(--border)',
+          paddingTop: '0.625rem',
+          margin: 0,
+        }}>
+          {result.message}
+        </p>
+      )}
+
+      {/* Chart */}
+      <div style={{ marginTop: '0.25rem' }}>
         <TrendChart
           chartType={chartType}
           timeSeries={result.timeSeries}
-          color={badgeColor}
+          color={accentColor}
           label={title}
           dataAvailable={result.dataAvailable}
         />
@@ -79,5 +163,3 @@ function MetricCard({ title, result, chartType, loading }: MetricCardProps) {
     </div>
   )
 }
-
-export default MetricCard

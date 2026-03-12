@@ -8,10 +8,9 @@ describe('RepoForm', () => {
     vi.restoreAllMocks()
   })
 
-  it('renders all three form fields', () => {
-    render(<RepoForm onSubmit={vi.fn()} loading={false} />)
+  it('renders owner/repo field and time window selector', () => {
+    render(<RepoForm onSubmit={vi.fn()} onLogout={vi.fn()} loading={false} />)
     expect(screen.getByLabelText(/owner\/repo/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/personal access token/i)).toBeInTheDocument()
     expect(screen.getByRole('group', { name: /time window/i })).toBeInTheDocument()
   })
 
@@ -19,7 +18,7 @@ describe('RepoForm', () => {
     const mockFetch = vi.fn()
     vi.stubGlobal('fetch', mockFetch)
 
-    render(<RepoForm onSubmit={vi.fn()} loading={false} />)
+    render(<RepoForm onSubmit={vi.fn()} onLogout={vi.fn()} loading={false} />)
     await userEvent.type(screen.getByLabelText(/owner\/repo/i), 'liatrio')
     fireEvent.click(screen.getByRole('button', { name: /load metrics/i }))
 
@@ -29,19 +28,18 @@ describe('RepoForm', () => {
 
   it('calls onSubmit with correct args on valid submission', async () => {
     const mockSubmit = vi.fn()
-    render(<RepoForm onSubmit={mockSubmit} loading={false} />)
+    render(<RepoForm onSubmit={mockSubmit} onLogout={vi.fn()} loading={false} />)
 
     await userEvent.type(screen.getByLabelText(/owner\/repo/i), 'liatrio/liatrio')
-    await userEvent.type(screen.getByLabelText(/personal access token/i), 'fake-token')
     fireEvent.click(screen.getByRole('button', { name: /load metrics/i }))
 
     await waitFor(() => {
-      expect(mockSubmit).toHaveBeenCalledWith('liatrio', 'liatrio', 'fake-token', 30)
+      expect(mockSubmit).toHaveBeenCalledWith('liatrio', 'liatrio', 30)
     })
   })
 
   it('disables submit button when loading', () => {
-    render(<RepoForm onSubmit={vi.fn()} loading={true} />)
+    render(<RepoForm onSubmit={vi.fn()} onLogout={vi.fn()} loading={true} />)
     expect(screen.getByRole('button', { name: /loading/i })).toBeDisabled()
   })
 })

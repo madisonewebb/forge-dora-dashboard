@@ -23,9 +23,7 @@ import java.util.stream.Collectors;
 public class MttrCalculator {
 
     private static final Logger log = LoggerFactory.getLogger(MttrCalculator.class);
-    private static final int MIN_INCIDENTS = 3;
-    private static final String NOT_AVAILABLE_MSG =
-            "Not enough incident data — label GitHub Issues with 'incident' to improve this metric.";
+    private static final int MIN_INCIDENTS = 1;
 
     public MetricResult calculate(List<GithubIssue> issues,
                                   List<GithubDeployment> deployments,
@@ -40,8 +38,36 @@ public class MttrCalculator {
             return calculateFromIssues(incidentIssues, windowDays);
         }
 
-        // Signal 2: failed deployment → next successful deployment
-        return calculateFromDeploymentGaps(deployments, windowDays);
+        // Signal 2: bug-labeled issues as a proxy for incidents
+        List<GithubIssue> bugIssues = issues.stream()
+                .filter(i -> i.getClosedAt() != null)
+                .filter(i -> hasBugLabel(i.getLabels()))
+                .toList();
+
+        if (bugIssues.size() >= MIN_INCIDENTS) {
+            return calculateFromIssues(bugIssues, windowDays);
+        }
+
+        // Signal 3: failed deployment → next successful deployment
+        MetricResult fromGaps = calculateFromDeploymentGaps(deployments, windowDays);
+        if (fromGaps.dataAvailable()) {
+            return fromGaps;
+        }
+
+        // Signal 4: all closed issues as a last-resort proxy for resolution time
+        List<GithubIssue> closedIssues = issues.stream()
+                .filter(i -> i.getClosedAt() != null)
+                .toList();
+
+        if (!closedIssues.isEmpty()) {
+            log.debug("Using all closed issues as MTTR proxy");
+            MetricResult result = calculateFromIssues(closedIssues, windowDays);
+            return new MetricResult(result.value(), result.unit(), result.band(),
+                    true, result.timeSeries(),
+                    "Based on issue resolution time (label issues 'incident' for accuracy)");
+        }
+
+        return MetricResult.notAvailable("No closed issues found in this window.");
     }
 
     private MetricResult calculateFromIssues(List<GithubIssue> incidents, int windowDays) {
@@ -61,7 +87,7 @@ public class MttrCalculator {
     private MetricResult calculateFromDeploymentGaps(List<GithubDeployment> deployments,
                                                       int windowDays) {
         if (deployments.isEmpty()) {
-            return MetricResult.notAvailable(NOT_AVAILABLE_MSG);
+            return MetricResult.notAvailable("No recovery data found.");
         }
 
         List<GithubDeployment> sorted = deployments.stream()
@@ -81,7 +107,7 @@ public class MttrCalculator {
         }
 
         if (gaps.size() < MIN_INCIDENTS) {
-            return MetricResult.notAvailable(NOT_AVAILABLE_MSG);
+            return MetricResult.notAvailable("No recovery data found.");
         }
 
         List<Double> gapHours = gaps.stream()
@@ -108,6 +134,15 @@ public class MttrCalculator {
         for (String label : labelsField.split(",")) {
             String trimmed = label.trim().toLowerCase();
             if ("incident".equals(trimmed) || "outage".equals(trimmed)) return true;
+        }
+        return false;
+    }
+
+    private boolean hasBugLabel(String labelsField) {
+        if (labelsField == null || labelsField.isBlank()) return false;
+        for (String label : labelsField.split(",")) {
+            String trimmed = label.trim().toLowerCase();
+            if ("bug".equals(trimmed) || "defect".equals(trimmed) || "fix".equals(trimmed)) return true;
         }
         return false;
     }

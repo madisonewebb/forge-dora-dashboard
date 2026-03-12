@@ -11,70 +11,171 @@ interface DashboardProps {
   token: string
   initialDays: 30 | 90 | 180
   onBack: () => void
+  onLogout: () => void
 }
 
 const WINDOWS = [30, 90, 180] as const
 
-function Dashboard({ owner, repo, token, initialDays, onBack }: DashboardProps) {
+export default function Dashboard({ owner, repo, token, initialDays, onBack, onLogout }: DashboardProps) {
   const [days, setDays] = useState<30 | 90 | 180>(initialDays)
   const [dismissed, setDismissed] = useState(false)
   const { data, loading, error } = useMetrics({ owner, repo, token, days })
 
   function getErrorMessage(): string {
     if (!error) return ''
-    if (error.status === 429) {
-      return `GitHub rate limit exceeded. Resets at ${error.resetsAt ?? 'unknown'}. Try again later.`
-    }
-    if (error.status === 401 || error.status === 403) {
-      return 'Invalid or expired GitHub token. Please re-enter your PAT.'
-    }
-    if (error.status === 404) {
-      return 'Repository not found. Check the owner/repo and try again.'
-    }
+    if (error.status === 429) return `GitHub rate limit exceeded. Resets at ${error.resetsAt ?? 'unknown'}.`
+    if (error.status === 401 || error.status === 403) return 'GitHub login expired or insufficient permissions.'
+    if (error.status === 404) return 'Repository not found. Check the owner/repo and try again.'
+    if (error.status === 502) return 'Unexpected response from GitHub. The repository may have too many workflow runs, or Actions may not be enabled.'
     return 'Could not reach the server. Check your connection.'
   }
 
   return (
-    <div style={{ background: '#f9fafb', minHeight: '100vh', padding: '2rem' }}>
-      <div style={{ maxWidth: 960, margin: '0 auto' }}>
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h1 style={{ margin: 0, fontSize: '1.25rem' }}>
-            DORA Metrics — {owner}/{repo}
-          </h1>
-          <button
-            onClick={onBack}
-            style={{
-              background: 'none',
-              border: '1px solid #d1d5db',
-              borderRadius: 6,
-              padding: '0.375rem 0.75rem',
-              cursor: 'pointer',
-            }}
-          >
-            Change Repository
-          </button>
-        </div>
+    <div style={{ minHeight: '100vh', padding: '0 0 4rem' }}>
+      {/* Top bar */}
+      <header style={{
+        borderBottom: '1px solid var(--border)',
+        background: 'rgba(7,12,27,0.9)',
+        backdropFilter: 'blur(12px)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 10,
+      }}>
+        <div style={{
+          maxWidth: 1100,
+          margin: '0 auto',
+          padding: '0 2rem',
+          height: 56,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1.5rem',
+        }}>
+          {/* Repo */}
+          <div style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '0.875rem',
+            color: 'var(--text)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            flex: 1,
+          }}>
+            <span style={{ color: 'var(--text-muted)' }}>{owner}</span>
+            <span style={{ color: 'var(--border2)', margin: '0 0.125rem' }}>/</span>
+            <span style={{ color: 'var(--text)' }}>{repo}</span>
+          </div>
 
-        {/* Time window selector */}
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
-          {WINDOWS.map(w => (
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
             <button
-              key={w}
-              onClick={() => { setDays(w); setDismissed(false) }}
+              onClick={onBack}
               style={{
-                padding: '0.375rem 0.875rem',
-                border: '1px solid #d1d5db',
+                background: 'none',
+                border: '1px solid var(--border)',
                 borderRadius: 6,
+                color: 'var(--text-muted)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.6875rem',
+                letterSpacing: '0.06em',
+                padding: '0.25rem 0.625rem',
                 cursor: 'pointer',
-                fontWeight: days === w ? 600 : 400,
-                background: days === w ? '#3b82f6' : 'white',
-                color: days === w ? 'white' : '#374151',
+                transition: 'border-color 0.15s, color 0.15s',
               }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.color = 'var(--text)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)' }}
             >
-              {w} days
+              ← Change
             </button>
-          ))}
+            <button
+              onClick={onLogout}
+              style={{
+                background: 'none',
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                color: 'var(--text-muted)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.6875rem',
+                letterSpacing: '0.06em',
+                padding: '0.25rem 0.625rem',
+                cursor: 'pointer',
+                transition: 'border-color 0.15s, color 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.color = 'var(--text)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)' }}
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main style={{ maxWidth: 1100, margin: '0 auto', padding: '2rem' }}>
+        {/* Page header */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'flex-end',
+          justifyContent: 'space-between',
+          marginBottom: '1.5rem',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          animation: 'fadeUp 0.3s ease both',
+        }}>
+          <div>
+            <div style={{
+              fontFamily: 'var(--font-head)',
+              fontSize: '0.6875rem',
+              fontWeight: 700,
+              letterSpacing: '0.2em',
+              textTransform: 'uppercase',
+              color: 'var(--text-muted)',
+              marginBottom: '0.25rem',
+            }}>
+              DORA Metrics
+            </div>
+            <h1 style={{
+              fontFamily: 'var(--font-head)',
+              fontSize: '1.75rem',
+              fontWeight: 800,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              color: 'var(--text)',
+              lineHeight: 1,
+            }}>
+              Engineering Performance
+            </h1>
+          </div>
+
+          {/* Time window selector */}
+          <div style={{
+            display: 'flex',
+            gap: '0.375rem',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            padding: '0.25rem',
+          }}>
+            {WINDOWS.map(w => (
+              <button
+                key={w}
+                onClick={() => { setDays(w); setDismissed(false) }}
+                style={{
+                  padding: '0.375rem 0.875rem',
+                  borderRadius: 6,
+                  fontFamily: 'var(--font-head)',
+                  fontSize: '0.8125rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.06em',
+                  cursor: 'pointer',
+                  background: days === w ? 'rgba(168,255,53,0.12)' : 'transparent',
+                  color: days === w ? 'var(--lime)' : 'var(--text-muted)',
+                  border: days === w ? '1px solid rgba(168,255,53,0.2)' : '1px solid transparent',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {w}d
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Error banner */}
@@ -83,13 +184,11 @@ function Dashboard({ owner, repo, token, initialDays, onBack }: DashboardProps) 
         )}
 
         {/* Metric grid */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: '1rem',
-          }}
-        >
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '1rem',
+        }}>
           {loading || !data ? (
             <>
               <SkeletonCard />
@@ -107,13 +206,11 @@ function Dashboard({ owner, repo, token, initialDays, onBack }: DashboardProps) 
           )}
         </div>
 
-        {/* AI Insights Panel — only shown when data is available */}
+        {/* AI Insights */}
         {data && !loading && (
           <InsightsPanel owner={owner} repo={repo} token={token} days={days} />
         )}
-      </div>
+      </main>
     </div>
   )
 }
-
-export default Dashboard

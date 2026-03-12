@@ -55,7 +55,7 @@ public class MetricsService {
         List<GithubIssue> issues =
                 gitHubCacheService.getIssues(owner, repo, token, windowStart);
 
-        MetricResult deployFreq = deploymentFrequencyCalculator.calculate(deployments, windowDays);
+        MetricResult deployFreq = deploymentFrequencyCalculator.calculate(deployments, workflowRuns, windowDays);
         MetricResult leadTime = leadTimeCalculator.calculate(pullRequests, deployments, windowDays);
         MetricResult cfr = changeFailureRateCalculator.calculate(
                 deployments, pullRequests, issues, workflowRuns, windowDays);
