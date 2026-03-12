@@ -6,13 +6,18 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
   }
 
-  # Uncomment to enable remote state (recommended for teams)
+  # Remote state — uncomment after running terraform/bootstrap.sh
+  # Replace ACCOUNT_ID and REGION with your values from the bootstrap output.
   # backend "s3" {
-  #   bucket         = "your-terraform-state-bucket"
+  #   bucket         = "dora-terraform-state-ACCOUNT_ID-REGION"
   #   key            = "dora-dashboard/terraform.tfstate"
-  #   region         = "us-east-1"
+  #   region         = "REGION"
   #   dynamodb_table = "terraform-state-lock"
   #   encrypt        = true
   # }

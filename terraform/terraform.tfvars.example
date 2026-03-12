@@ -1,8 +1,9 @@
 # Copy this file to terraform.tfvars and fill in the values.
 # terraform.tfvars is gitignored — never commit secrets.
 
-aws_region  = "us-east-1"
-environment = "production"
+aws_region         = "us-east-1"
+environment        = "production"
+github_repository  = "madisonewebb/forge-dora-dashboard"
 
 # Secrets — use a secrets manager or CI/CD environment variables in practice
 db_password       = "change-me"
