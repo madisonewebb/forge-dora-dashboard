@@ -27,7 +27,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: us-east-1
 
       - name: Log in to Amazon ECR
         id: ecr-login
@@ -63,7 +63,7 @@ jobs:
       - name: Substitute placeholders in task definition
         env:
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_REGION: us-east-1
         run: envsubst < ecs-task-definition.json > ecs-task-definition.rendered.json
 
       - name: Render task definition with new backend image

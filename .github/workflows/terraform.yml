@@ -14,8 +14,8 @@ permissions:
 
 env:
   TF_VERSION: "1.10.0"
-  AWS_REGION: ${{ secrets.AWS_REGION }}
-  TF_VAR_aws_region: ${{ secrets.AWS_REGION }}
+  AWS_REGION: us-east-1
+  TF_VAR_aws_region: us-east-1
   TF_VAR_environment: "production"
   TF_VAR_github_repository: ${{ github.repository }}
   # Sensitive vars — Terraform reads TF_VAR_* automatically
@@ -35,7 +35,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: us-east-1
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -128,7 +128,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: us-east-1
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
