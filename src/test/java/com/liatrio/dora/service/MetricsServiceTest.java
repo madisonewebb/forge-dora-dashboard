@@ -41,7 +41,8 @@ class MetricsServiceTest {
                 deploymentFrequencyCalculator,
                 leadTimeCalculator,
                 changeFailureRateCalculator,
-                mttrCalculator);
+                mttrCalculator,
+                Runnable::run); // inline executor for deterministic tests
     }
 
     @Test

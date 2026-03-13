@@ -15,6 +15,12 @@ import java.util.Map;
 @Service
 public class CsvExportService {
 
+    /** Wraps a field in double-quotes and escapes any embedded double-quotes per RFC 4180. */
+    private static String csvField(String value) {
+        if (value == null) return "";
+        return "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+
     public byte[] generateCsv(MetricsResponse response) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PrintWriter writer = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8));
@@ -31,10 +37,10 @@ public class CsvExportService {
         for (Map.Entry<String, MetricResult> entry : metrics.entrySet()) {
             MetricResult r = entry.getValue();
             writer.printf("%s,%s,%s,%s,%s,%d%n",
-                    entry.getKey(),
+                    csvField(entry.getKey()),
                     r.value() != null ? r.value().toString() : "",
-                    r.unit() != null ? r.unit() : "",
-                    r.band() != null ? r.band().name() : "",
+                    csvField(r.unit()),
+                    csvField(r.band() != null ? r.band().name() : null),
                     r.dataAvailable(),
                     windowDays);
         }
@@ -47,7 +53,7 @@ public class CsvExportService {
             if (r.timeSeries() != null) {
                 for (WeekDataPoint point : r.timeSeries()) {
                     writer.printf("%s,%s,%s%n",
-                            entry.getKey(),
+                            csvField(entry.getKey()),
                             point.weekStart(),
                             point.value() != null ? point.value().toString() : "");
                 }

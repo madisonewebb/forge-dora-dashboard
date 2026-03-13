@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
@@ -46,14 +47,17 @@ public class ExportController {
     public ResponseEntity<byte[]> exportCsv(
             @RequestParam String owner,
             @RequestParam String repo,
-            @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestParam(defaultValue = "30") int days) {
 
+        if (!StringUtils.hasText(authHeader) || !authHeader.startsWith("Bearer ")) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Bearer token required");
+        }
         if (days < MIN_DAYS || days > MAX_DAYS) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "days must be between 7 and 365");
         }
 
-        String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+        String token = authHeader.substring(7);
         log.info("CSV export requested for {}/{} over {} days", owner, repo, days);
 
         MetricsResponse response = metricsService.getMetrics(owner, repo, token, days);

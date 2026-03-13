@@ -56,12 +56,20 @@ class ExportControllerTest {
     }
 
     @Test
-    void exportCsv_missingAuthHeader_returns400() throws Exception {
-        // Missing Authorization header — Spring MVC returns 400 for required header
+    void exportCsv_missingAuthHeader_returns401() throws Exception {
         mockMvc.perform(get("/api/export/csv")
                         .param("owner", "octocat")
                         .param("repo", "hello-world"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void exportCsv_invalidAuthScheme_returns401() throws Exception {
+        mockMvc.perform(get("/api/export/csv")
+                        .param("owner", "octocat")
+                        .param("repo", "hello-world")
+                        .header("Authorization", "Basic dXNlcjpwYXNz"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

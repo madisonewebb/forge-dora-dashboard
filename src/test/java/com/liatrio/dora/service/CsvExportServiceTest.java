@@ -55,16 +55,29 @@ class CsvExportServiceTest {
 
         byte[] csv = service.generateCsv(response);
         String content = new String(csv, StandardCharsets.UTF_8);
-        assertThat(content).contains("deploymentFrequency,2026-03-01,2.0");
+        assertThat(content).contains("\"deploymentFrequency\",2026-03-01,2.0");
     }
 
     @Test
     void generateCsv_isUtf8Encoded() {
-        byte[] csv = service.generateCsv(buildResponse());
-        // Verify round-trip: decoding as UTF-8 should produce the same result
+        // Write a metric with a multi-byte UTF-8 unit (µ = U+00B5, 2 bytes in UTF-8)
+        LocalDate weekStart = LocalDate.of(2026, 3, 1);
+        MetricResult resultWithUnit = new MetricResult(
+                1.0, "µs", DoraPerformanceBand.ELITE, true,
+                List.of(new WeekDataPoint(weekStart, 1.0)), null);
+        MetricsMeta meta = new MetricsMeta("o", "r", 30, Instant.now());
+        MetricResult noData = MetricResult.notAvailable(null);
+        MetricsResponse response = new MetricsResponse(meta, resultWithUnit, noData, noData, noData);
+
+        byte[] csv = service.generateCsv(response);
+
+        // µ is U+00B5 → UTF-8 bytes 0xC2 0xB5; verify the raw bytes contain this sequence
         String content = new String(csv, StandardCharsets.UTF_8);
-        assertThat(new String(content.getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8))
-                .isEqualTo(content);
+        assertThat(content).contains("µs");
+        // Confirm the bytes are UTF-8: re-decoding as UTF-8 must reproduce the same string
+        assertThat(new String(csv, StandardCharsets.UTF_8)).isEqualTo(content);
+        // Decoding as Latin-1 would give a different result (µ would be two garbage chars)
+        assertThat(new String(csv, java.nio.charset.StandardCharsets.ISO_8859_1)).isNotEqualTo(content);
     }
 
     @Test
@@ -76,7 +89,7 @@ class CsvExportServiceTest {
         byte[] csv = service.generateCsv(response);
         String content = new String(csv, StandardCharsets.UTF_8);
         // value and band columns should be empty for unavailable metrics
-        assertThat(content).contains("deploymentFrequency,,,");
+        assertThat(content).contains("\"deploymentFrequency\",,,");
     }
 
     private MetricsResponse buildResponse() {

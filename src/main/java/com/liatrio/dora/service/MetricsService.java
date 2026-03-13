@@ -14,12 +14,14 @@ import com.liatrio.dora.model.GithubRelease;
 import com.liatrio.dora.model.GithubWorkflowRun;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 @Service
 public class MetricsService {
@@ -31,35 +33,38 @@ public class MetricsService {
     private final LeadTimeCalculator leadTimeCalculator;
     private final ChangeFailureRateCalculator changeFailureRateCalculator;
     private final MttrCalculator mttrCalculator;
+    private final Executor ioExecutor;
 
     public MetricsService(GitHubCacheService gitHubCacheService,
                           DeploymentFrequencyCalculator deploymentFrequencyCalculator,
                           LeadTimeCalculator leadTimeCalculator,
                           ChangeFailureRateCalculator changeFailureRateCalculator,
-                          MttrCalculator mttrCalculator) {
+                          MttrCalculator mttrCalculator,
+                          @Qualifier("ioExecutor") Executor ioExecutor) {
         this.gitHubCacheService = gitHubCacheService;
         this.deploymentFrequencyCalculator = deploymentFrequencyCalculator;
         this.leadTimeCalculator = leadTimeCalculator;
         this.changeFailureRateCalculator = changeFailureRateCalculator;
         this.mttrCalculator = mttrCalculator;
+        this.ioExecutor = ioExecutor;
     }
 
     public MetricsResponse getMetrics(String owner, String repo, String token, int windowDays) {
         log.info("Calculating DORA metrics for {}/{} over {} days", owner, repo, windowDays);
         Instant windowStart = Instant.now().minus(windowDays, ChronoUnit.DAYS);
 
-        // Run all 5 independent GitHub fetches concurrently on the common ForkJoinPool.
+        // Run all 5 independent GitHub fetches concurrently on the dedicated I/O thread pool.
         // CompletableFuture.join() unwraps and re-throws any CompletionException automatically.
         CompletableFuture<List<GithubDeployment>> deploymentsFuture = CompletableFuture
-                .supplyAsync(() -> gitHubCacheService.getDeployments(owner, repo, token, windowStart));
+                .supplyAsync(() -> gitHubCacheService.getDeployments(owner, repo, token, windowStart), ioExecutor);
         CompletableFuture<List<GithubRelease>> releasesFuture = CompletableFuture
-                .supplyAsync(() -> gitHubCacheService.getReleases(owner, repo, token, windowStart));
+                .supplyAsync(() -> gitHubCacheService.getReleases(owner, repo, token, windowStart), ioExecutor);
         CompletableFuture<List<GithubWorkflowRun>> workflowRunsFuture = CompletableFuture
-                .supplyAsync(() -> gitHubCacheService.getWorkflowRuns(owner, repo, token, windowStart));
+                .supplyAsync(() -> gitHubCacheService.getWorkflowRuns(owner, repo, token, windowStart), ioExecutor);
         CompletableFuture<List<GithubPullRequest>> pullRequestsFuture = CompletableFuture
-                .supplyAsync(() -> gitHubCacheService.getPullRequests(owner, repo, token, windowStart));
+                .supplyAsync(() -> gitHubCacheService.getPullRequests(owner, repo, token, windowStart), ioExecutor);
         CompletableFuture<List<GithubIssue>> issuesFuture = CompletableFuture
-                .supplyAsync(() -> gitHubCacheService.getIssues(owner, repo, token, windowStart));
+                .supplyAsync(() -> gitHubCacheService.getIssues(owner, repo, token, windowStart), ioExecutor);
 
         CompletableFuture.allOf(deploymentsFuture, releasesFuture, workflowRunsFuture, pullRequestsFuture, issuesFuture).join();
 

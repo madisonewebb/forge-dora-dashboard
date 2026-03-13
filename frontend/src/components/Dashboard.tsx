@@ -25,6 +25,7 @@ export default function Dashboard({ owner, repo, token, initialDays, onBack, onL
   const [dismissed, setDismissed] = useState(false)
   const [copied, setCopied] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState(false)
   const [compareActive, setCompareActive] = useState(false)
   const [compareOwner, setCompareOwner] = useState<string | null>(null)
   const [compareRepo, setCompareRepo] = useState<string | null>(null)
@@ -38,12 +39,17 @@ export default function Dashboard({ owner, repo, token, initialDays, onBack, onL
 
   const handleDownloadCsv = useCallback(async () => {
     setDownloading(true)
+    setDownloadError(false)
     try {
       const res = await fetch(
         `/api/export/csv?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&days=${days}`,
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      if (!res.ok) return
+      if (!res.ok) {
+        setDownloadError(true)
+        setTimeout(() => setDownloadError(false), 3000)
+        return
+      }
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -51,6 +57,9 @@ export default function Dashboard({ owner, repo, token, initialDays, onBack, onL
       a.download = `dora-${owner}-${repo}-${new Date().toISOString().slice(0, 10)}.csv`
       a.click()
       URL.revokeObjectURL(url)
+    } catch {
+      setDownloadError(true)
+      setTimeout(() => setDownloadError(false), 3000)
     } finally {
       setDownloading(false)
     }
@@ -156,9 +165,9 @@ export default function Dashboard({ owner, repo, token, initialDays, onBack, onL
               disabled={downloading || loading}
               style={{
                 background: 'none',
-                border: '1px solid var(--border)',
+                border: `1px solid ${downloadError ? 'var(--red, #f87171)' : 'var(--border)'}`,
                 borderRadius: 6,
-                color: downloading ? 'var(--lime)' : 'var(--text-muted)',
+                color: downloadError ? 'var(--red, #f87171)' : downloading ? 'var(--lime)' : 'var(--text-muted)',
                 fontFamily: 'var(--font-mono)',
                 fontSize: '0.6875rem',
                 letterSpacing: '0.06em',
@@ -167,10 +176,10 @@ export default function Dashboard({ owner, repo, token, initialDays, onBack, onL
                 transition: 'border-color 0.15s, color 0.15s',
                 opacity: loading ? 0.5 : 1,
               }}
-              onMouseEnter={e => { if (!downloading) { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.color = 'var(--text)' } }}
-              onMouseLeave={e => { if (!downloading) { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)' } }}
+              onMouseEnter={e => { if (!downloading && !downloadError) { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.color = 'var(--text)' } }}
+              onMouseLeave={e => { if (!downloading && !downloadError) { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)' } }}
             >
-              {downloading ? 'Downloading…' : '⬇ CSV'}
+              {downloadError ? '✗ Failed' : downloading ? 'Downloading…' : '⬇ CSV'}
             </button>
             <button
               onClick={() => { setCompareActive(prev => !prev); if (compareActive) { setCompareOwner(null); setCompareRepo(null) } }}
