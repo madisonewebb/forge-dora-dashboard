@@ -34,6 +34,13 @@
           "awslogs-region": "${AWS_REGION}",
           "awslogs-stream-prefix": "backend"
         }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
       }
     },
     {
