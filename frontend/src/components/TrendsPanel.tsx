@@ -80,9 +80,9 @@ export default function TrendsPanel({ history }: TrendsPanelProps) {
       },
       tooltip: {
         callbacks: {
-          label: (ctx: { dataset: { label?: string }; parsed: { y: number } }) => {
+          label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) => {
             const bandNames = ['LOW', 'MEDIUM', 'HIGH', 'ELITE']
-            const band = bandNames[ctx.parsed.y] ?? ''
+            const band = ctx.parsed.y != null ? (bandNames[ctx.parsed.y] ?? '') : ''
             return `${ctx.dataset.label}: ${band}`
           },
         },
