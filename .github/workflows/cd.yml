@@ -60,6 +60,19 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Debug - verify AWS_ACCOUNT_ID secret
+        env:
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+        run: |
+          ACTUAL=$(aws sts get-caller-identity --query Account --output text)
+          echo "Actual account ID from STS: $ACTUAL"
+          if [ "$ACTUAL" = "$AWS_ACCOUNT_ID" ]; then
+            echo "✓ Secret matches"
+          else
+            echo "✗ MISMATCH — secret has wrong value"
+            echo "Secret length: ${#AWS_ACCOUNT_ID} chars"
+          fi
+
       - name: Substitute placeholders in task definition
         env:
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
