@@ -141,10 +141,7 @@ export default function InsightsPanel({ owner, repo, token, days, metrics }: Ins
         buffer = parts.pop() ?? ''
         for (const part of parts) {
           for (const line of part.split('\n')) {
-            if (line.startsWith('data:')) {
-              const raw = line.slice(5)
-              setContent(prev => prev + (raw.startsWith(' ') ? raw.slice(1) : raw))
-            }
+            if (line.startsWith('data:')) setContent(prev => prev + line.slice(5))
           }
         }
       }
