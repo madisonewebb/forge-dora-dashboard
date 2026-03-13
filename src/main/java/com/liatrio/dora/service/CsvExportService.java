@@ -6,7 +6,9 @@ import com.liatrio.dora.dto.WeekDataPoint;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -15,7 +17,7 @@ public class CsvExportService {
 
     public byte[] generateCsv(MetricsResponse response) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        PrintWriter writer = new PrintWriter(baos);
+        PrintWriter writer = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8));
 
         // Summary section
         writer.println("metric,value,unit,band,dataAvailable,windowDays");

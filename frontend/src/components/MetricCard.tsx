@@ -145,44 +145,48 @@ export default function MetricCard({ title, result, chartType, loading, compareR
             color: 'var(--text-muted)',
             letterSpacing: '0.06em',
           }}>vs</span>
-          {compareResult.dataAvailable ? (
-            <>
-              <span style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '1.25rem',
-                fontWeight: 600,
-                color: '#00D4A8',
-                lineHeight: 1,
-                letterSpacing: '-0.02em',
-              }}>
-                {compareResult.value?.toFixed(1)}
-              </span>
-              <span style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '0.6875rem',
-                color: 'var(--text-muted)',
-              }}>
-                {compareResult.unit}
-              </span>
-              {compareResult.band && (
-                <span style={{
-                  display: 'inline-block',
-                  background: 'rgba(0,212,168,0.1)',
-                  color: '#00D4A8',
-                  border: '1px solid rgba(0,212,168,0.2)',
-                  borderRadius: 4,
-                  padding: '1px 6px',
-                  fontFamily: 'var(--font-head)',
-                  fontSize: '0.625rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.15em',
-                  textTransform: 'uppercase',
-                }}>
-                  {compareResult.band}
-                </span>
-              )}
-            </>
-          ) : (
+          {compareResult.dataAvailable ? (() => {
+              const cColor = compareResult.band ? BAND_COLORS[compareResult.band] : 'var(--border2)'
+              const cBg    = compareResult.band ? BAND_BG[compareResult.band]     : 'transparent'
+              return (
+                <>
+                  <span style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '1.25rem',
+                    fontWeight: 600,
+                    color: cColor,
+                    lineHeight: 1,
+                    letterSpacing: '-0.02em',
+                  }}>
+                    {compareResult.value?.toFixed(1)}
+                  </span>
+                  <span style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '0.6875rem',
+                    color: 'var(--text-muted)',
+                  }}>
+                    {compareResult.unit}
+                  </span>
+                  {compareResult.band && (
+                    <span style={{
+                      display: 'inline-block',
+                      background: cBg,
+                      color: cColor,
+                      border: `1px solid ${cColor}30`,
+                      borderRadius: 4,
+                      padding: '1px 6px',
+                      fontFamily: 'var(--font-head)',
+                      fontSize: '0.625rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.15em',
+                      textTransform: 'uppercase',
+                    }}>
+                      {compareResult.band}
+                    </span>
+                  )}
+                </>
+              )
+            })() : (
             <span style={{
               fontFamily: 'var(--font-mono)',
               fontSize: '0.75rem',

@@ -16,7 +16,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.time.LocalDate;
+import java.util.regex.Pattern;
 
 @Tag(name = "Export", description = "Export DORA metrics as CSV")
 @RestController
@@ -26,6 +30,8 @@ public class ExportController {
     private static final Logger log = LoggerFactory.getLogger(ExportController.class);
     private static final int MIN_DAYS = 7;
     private static final int MAX_DAYS = 365;
+    /** Allow only alphanumeric characters, hyphens, underscores, and dots in filename segments. */
+    private static final Pattern SAFE_FILENAME = Pattern.compile("[^a-zA-Z0-9._-]");
 
     private final MetricsService metricsService;
     private final CsvExportService csvExportService;
@@ -44,7 +50,7 @@ public class ExportController {
             @RequestParam(defaultValue = "30") int days) {
 
         if (days < MIN_DAYS || days > MAX_DAYS) {
-            throw new IllegalArgumentException("days must be between 7 and 365");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "days must be between 7 and 365");
         }
 
         String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
@@ -53,7 +59,9 @@ public class ExportController {
         MetricsResponse response = metricsService.getMetrics(owner, repo, token, days);
         byte[] csv = csvExportService.generateCsv(response);
 
-        String filename = String.format("dora-%s-%s-%s.csv", owner, repo, LocalDate.now());
+        String safeOwner = SAFE_FILENAME.matcher(owner).replaceAll("_");
+        String safeRepo  = SAFE_FILENAME.matcher(repo).replaceAll("_");
+        String filename = String.format("dora-%s-%s-%s.csv", safeOwner, safeRepo, LocalDate.now());
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("text/csv"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")

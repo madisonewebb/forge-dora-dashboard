@@ -49,8 +49,8 @@ export function useMetricHistory(owner: string, repo: string, token: string) {
           }
           setHistory(map)
         }
-      } catch {
-        // silently ignore — TrendsPanel just won't render
+      } catch (err) {
+        console.warn('useMetricHistory: failed to fetch history data', err)
       } finally {
         if (!cancelled) setLoading(false)
       }

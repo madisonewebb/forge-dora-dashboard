@@ -20,8 +20,6 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 @Service
 public class MetricsService {
@@ -33,7 +31,6 @@ public class MetricsService {
     private final LeadTimeCalculator leadTimeCalculator;
     private final ChangeFailureRateCalculator changeFailureRateCalculator;
     private final MttrCalculator mttrCalculator;
-    private final Executor executor;
 
     public MetricsService(GitHubCacheService gitHubCacheService,
                           DeploymentFrequencyCalculator deploymentFrequencyCalculator,
@@ -45,28 +42,24 @@ public class MetricsService {
         this.leadTimeCalculator = leadTimeCalculator;
         this.changeFailureRateCalculator = changeFailureRateCalculator;
         this.mttrCalculator = mttrCalculator;
-        this.executor = Executors.newCachedThreadPool();
     }
 
     public MetricsResponse getMetrics(String owner, String repo, String token, int windowDays) {
         log.info("Calculating DORA metrics for {}/{} over {} days", owner, repo, windowDays);
         Instant windowStart = Instant.now().minus(windowDays, ChronoUnit.DAYS);
 
+        // Run all 5 independent GitHub fetches concurrently on the common ForkJoinPool.
+        // CompletableFuture.join() unwraps and re-throws any CompletionException automatically.
         CompletableFuture<List<GithubDeployment>> deploymentsFuture = CompletableFuture
-                .supplyAsync(() -> gitHubCacheService.getDeployments(owner, repo, token, windowStart), executor)
-                .exceptionally(ex -> { throw new RuntimeException(ex); });
+                .supplyAsync(() -> gitHubCacheService.getDeployments(owner, repo, token, windowStart));
         CompletableFuture<List<GithubRelease>> releasesFuture = CompletableFuture
-                .supplyAsync(() -> gitHubCacheService.getReleases(owner, repo, token, windowStart), executor)
-                .exceptionally(ex -> { throw new RuntimeException(ex); });
+                .supplyAsync(() -> gitHubCacheService.getReleases(owner, repo, token, windowStart));
         CompletableFuture<List<GithubWorkflowRun>> workflowRunsFuture = CompletableFuture
-                .supplyAsync(() -> gitHubCacheService.getWorkflowRuns(owner, repo, token, windowStart), executor)
-                .exceptionally(ex -> { throw new RuntimeException(ex); });
+                .supplyAsync(() -> gitHubCacheService.getWorkflowRuns(owner, repo, token, windowStart));
         CompletableFuture<List<GithubPullRequest>> pullRequestsFuture = CompletableFuture
-                .supplyAsync(() -> gitHubCacheService.getPullRequests(owner, repo, token, windowStart), executor)
-                .exceptionally(ex -> { throw new RuntimeException(ex); });
+                .supplyAsync(() -> gitHubCacheService.getPullRequests(owner, repo, token, windowStart));
         CompletableFuture<List<GithubIssue>> issuesFuture = CompletableFuture
-                .supplyAsync(() -> gitHubCacheService.getIssues(owner, repo, token, windowStart), executor)
-                .exceptionally(ex -> { throw new RuntimeException(ex); });
+                .supplyAsync(() -> gitHubCacheService.getIssues(owner, repo, token, windowStart));
 
         CompletableFuture.allOf(deploymentsFuture, releasesFuture, workflowRunsFuture, pullRequestsFuture, issuesFuture).join();
 
