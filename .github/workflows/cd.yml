@@ -5,6 +5,7 @@ on:
     workflows: ["CI"]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   id-token: write  # required for OIDC
@@ -15,8 +16,8 @@ jobs:
     name: Deploy to ECS Fargate
     runs-on: ubuntu-latest
     environment: production
-    # Only deploy when CI passes — prevents shipping broken builds
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # Only deploy when CI passes (skipped on manual dispatch)
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -33,11 +34,29 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Check if images already exist in ECR
+        id: ecr-check
+        run: |
+          SHA=${{ github.event.workflow_run.head_sha }}
+          REGISTRY=${{ steps.ecr-login.outputs.registry }}
+          backend_exists=false
+          frontend_exists=false
+          if aws ecr describe-images --repository-name dora-backend --image-ids imageTag=$SHA &>/dev/null; then
+            backend_exists=true
+          fi
+          if aws ecr describe-images --repository-name dora-frontend --image-ids imageTag=$SHA &>/dev/null; then
+            frontend_exists=true
+          fi
+          echo "backend_exists=$backend_exists" >> $GITHUB_OUTPUT
+          echo "frontend_exists=$frontend_exists" >> $GITHUB_OUTPUT
+
       - name: Set up Docker Buildx
+        if: steps.ecr-check.outputs.backend_exists == 'false' || steps.ecr-check.outputs.frontend_exists == 'false'
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push backend image
         id: build-backend
+        if: steps.ecr-check.outputs.backend_exists == 'false'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -51,6 +70,7 @@ jobs:
 
       - name: Build and push frontend image
         id: build-frontend
+        if: steps.ecr-check.outputs.frontend_exists == 'false'
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
@@ -59,19 +79,6 @@ jobs:
           tags: ${{ steps.ecr-login.outputs.registry }}/dora-frontend:${{ github.event.workflow_run.head_sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Debug - verify AWS_ACCOUNT_ID secret
-        env:
-          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-        run: |
-          ACTUAL=$(aws sts get-caller-identity --query Account --output text)
-          echo "Actual account ID from STS: $ACTUAL"
-          if [ "$ACTUAL" = "$AWS_ACCOUNT_ID" ]; then
-            echo "✓ Secret matches"
-          else
-            echo "✗ MISMATCH — secret has wrong value"
-            echo "Secret length: ${#AWS_ACCOUNT_ID} chars"
-          fi
 
       - name: Substitute placeholders in task definition
         env:
@@ -94,9 +101,6 @@ jobs:
           task-definition: ${{ steps.render-backend.outputs.task-definition }}
           container-name: frontend
           image: ${{ steps.ecr-login.outputs.registry }}/dora-frontend:${{ github.event.workflow_run.head_sha }}
-
-      - name: Debug - print final task definition
-        run: cat ${{ steps.render-frontend.outputs.task-definition }}
 
       - name: Deploy to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
