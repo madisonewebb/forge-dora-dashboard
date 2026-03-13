@@ -82,9 +82,10 @@ jobs:
 
       - name: Substitute placeholders in task definition
         env:
-          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
           AWS_REGION: us-east-1
-        run: envsubst < ecs-task-definition.json > ecs-task-definition.rendered.json
+        run: |
+          AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          envsubst < ecs-task-definition.json > ecs-task-definition.rendered.json
 
       - name: Render task definition with new backend image
         id: render-backend
