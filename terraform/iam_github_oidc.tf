@@ -92,7 +92,8 @@ data "aws_iam_policy_document" "cd_permissions" {
     ]
     resources = [aws_ecs_service.app.id]
   }
-  # IAM PassRole — ECS needs to pass the task execution role
+  # IAM PassRole — required for ECS RegisterTaskDefinition to accept the roles.
+  # The PassedToService condition is required; without it ECS returns "Role is not valid".
   statement {
     sid     = "IAMPassRole"
     actions = ["iam:PassRole"]
@@ -100,6 +101,11 @@ data "aws_iam_policy_document" "cd_permissions" {
       aws_iam_role.ecs_execution.arn,
       aws_iam_role.ecs_task.arn,
     ]
+    condition {
+      test     = "StringLike"
+      variable = "iam:PassedToService"
+      values   = ["ecs-tasks.amazonaws.com"]
+    }
   }
 }
 
