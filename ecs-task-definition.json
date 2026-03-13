@@ -53,10 +53,7 @@
           "protocol": "tcp"
         }
       ],
-      "environment": [
-        { "name": "BACKEND_HOST", "value": "localhost" }
-      ],
-      "dependsOn": [
+"dependsOn": [
         {
           "containerName": "backend",
           "condition": "HEALTHY"
