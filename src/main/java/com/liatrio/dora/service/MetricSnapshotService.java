@@ -6,7 +6,10 @@ import com.liatrio.dora.model.MetricSnapshot;
 import com.liatrio.dora.repository.MetricSnapshotRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -21,6 +24,9 @@ public class MetricSnapshotService {
     private static final Logger log = LoggerFactory.getLogger(MetricSnapshotService.class);
 
     private final MetricSnapshotRepository snapshotRepository;
+
+    @Value("${snapshot.retention-days:730}")
+    private int retentionDays;
 
     public MetricSnapshotService(MetricSnapshotRepository snapshotRepository) {
         this.snapshotRepository = snapshotRepository;
@@ -75,6 +81,17 @@ public class MetricSnapshotService {
                 log.error("Failed to save snapshot for metric {} repo {}: {}", metricName, repoId, e.getMessage(), e);
             }
         }
+    }
+
+    /**
+     * Deletes snapshots older than the configured retention period. Runs daily at 03:00 UTC.
+     */
+    @Scheduled(cron = "0 0 3 * * *")
+    @Transactional
+    public void purgeOldSnapshots() {
+        Instant cutoff = Instant.now().minus(retentionDays, ChronoUnit.DAYS);
+        log.info("Purging metric snapshots older than {} days (before {})", retentionDays, cutoff);
+        snapshotRepository.deleteBySnapshotAtBefore(cutoff);
     }
 
     /**

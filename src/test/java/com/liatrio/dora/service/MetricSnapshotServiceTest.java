@@ -12,8 +12,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,6 +34,8 @@ class MetricSnapshotServiceTest {
     @BeforeEach
     void setUp() {
         snapshotService = new MetricSnapshotService(snapshotRepository);
+        // Inject the default retention value (730) that @Value would supply at runtime
+        ReflectionTestUtils.setField(snapshotService, "retentionDays", 730);
     }
 
     // ── saveSnapshot — no existing snapshot today ─────────────────────────────
@@ -106,6 +110,22 @@ class MetricSnapshotServiceTest {
         ArgumentCaptor<MetricSnapshot> captor = ArgumentCaptor.forClass(MetricSnapshot.class);
         verify(snapshotRepository, times(4)).save(captor.capture());
         assertThat(captor.getAllValues()).allMatch(s -> Integer.valueOf(180).equals(s.getWindowDays()));
+    }
+
+    // ── purgeOldSnapshots ─────────────────────────────────────────────────────
+
+    @Test
+    void purgeOldSnapshots_deletesSnapshotsBeyondRetentionWindow() {
+        snapshotService.purgeOldSnapshots();
+
+        ArgumentCaptor<Instant> cutoffCaptor = ArgumentCaptor.forClass(Instant.class);
+        verify(snapshotRepository).deleteBySnapshotAtBefore(cutoffCaptor.capture());
+
+        Instant cutoff = cutoffCaptor.getValue();
+        // Default retention is 730 days; cutoff should be roughly 730 days ago
+        Instant expectedMin = Instant.now().minus(731, java.time.temporal.ChronoUnit.DAYS);
+        Instant expectedMax = Instant.now().minus(729, java.time.temporal.ChronoUnit.DAYS);
+        assertThat(cutoff).isAfter(expectedMin).isBefore(expectedMax);
     }
 
     // ── getHistory ────────────────────────────────────────────────────────────

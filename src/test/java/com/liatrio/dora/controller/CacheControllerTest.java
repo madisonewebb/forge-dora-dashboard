@@ -22,9 +22,16 @@ class CacheControllerTest {
 
     @Test
     void deleteCache_returns204AndCallsInvalidate() throws Exception {
-        mockMvc.perform(delete("/api/cache/octocat/Hello-World"))
+        mockMvc.perform(delete("/api/cache/octocat/Hello-World")
+                        .header("Authorization", "Bearer test-token"))
                 .andExpect(status().isNoContent());
 
         verify(cacheService).invalidate("octocat", "Hello-World");
+    }
+
+    @Test
+    void deleteCache_returns401WhenNoAuth() throws Exception {
+        mockMvc.perform(delete("/api/cache/octocat/Hello-World"))
+                .andExpect(status().isUnauthorized());
     }
 }

@@ -16,4 +16,6 @@ public interface MetricSnapshotRepository extends JpaRepository<MetricSnapshot, 
 
     Optional<MetricSnapshot> findByRepoIdAndMetricNameAndWindowDaysAndSnapshotAtBetween(
             String repoId, String metricName, Integer windowDays, Instant start, Instant end);
+
+    void deleteBySnapshotAtBefore(Instant cutoff);
 }

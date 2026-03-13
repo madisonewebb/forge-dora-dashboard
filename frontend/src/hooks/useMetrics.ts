@@ -21,6 +21,7 @@ export function useMetrics({ owner, repo, token, days }: UseMetricsParams) {
   const [rateLimit, setRateLimit] = useState<RateLimitInfo | null>(null)
 
   useEffect(() => {
+    if (!owner || !repo || !token) return
     let cancelled = false
 
     async function fetchMetrics() {

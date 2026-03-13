@@ -1,5 +1,7 @@
 package com.liatrio.dora.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
@@ -26,6 +28,7 @@ import org.springframework.web.server.ResponseStatusException;
  *  2. Enable "Device flow" on the app's settings page.
  *  3. Set GITHUB_CLIENT_ID env var (no client_secret needed for device flow).
  */
+@Tag(name = "Auth", description = "GitHub OAuth Device Flow authentication")
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -46,6 +49,7 @@ public class AuthController {
      * Step 1 — request a device code and user code from GitHub.
      * Returns: { device_code, user_code, verification_uri, expires_in, interval }
      */
+    @Operation(summary = "Initialize device flow", description = "Requests a device code and user code from GitHub")
     @PostMapping("/device/init")
     public Mono<Map<String, Object>> initDevice() {
         if (clientId.isBlank()) {
@@ -70,6 +74,7 @@ public class AuthController {
      * Returns: { access_token, token_type, scope } on success,
      *          { error, error_description } while pending or on failure.
      */
+    @Operation(summary = "Poll device flow", description = "Polls GitHub until the user authorizes or the code expires")
     @PostMapping("/device/poll")
     public Mono<Map<String, Object>> pollDevice(@RequestBody Map<String, String> body) {
         String deviceCode = body.get("deviceCode");

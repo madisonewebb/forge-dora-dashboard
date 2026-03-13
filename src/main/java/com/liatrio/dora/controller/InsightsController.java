@@ -1,6 +1,8 @@
 package com.liatrio.dora.controller;
 
 import com.liatrio.dora.service.InsightsService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +18,7 @@ import reactor.core.publisher.Flux;
 import java.io.IOException;
 import java.util.Set;
 
+@Tag(name = "Insights", description = "AI-powered DORA insights via Server-Sent Events")
 @RestController
 @RequestMapping("/api/insights")
 public class InsightsController {
@@ -30,6 +33,7 @@ public class InsightsController {
         this.insightsService = insightsService;
     }
 
+    @Operation(summary = "Stream AI insights", description = "Streams AI-generated insights for the given repository as Server-Sent Events")
     @GetMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter getInsights(
             @RequestParam String owner,

@@ -6,6 +6,8 @@ import com.liatrio.dora.dto.MetricsResponse;
 import com.liatrio.dora.model.MetricSnapshot;
 import com.liatrio.dora.service.MetricSnapshotService;
 import com.liatrio.dora.service.MetricsService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+@Tag(name = "Metrics", description = "DORA metrics calculation and history")
 @RestController
 @RequestMapping("/api/metrics")
 public class MetricsController {
@@ -35,6 +38,7 @@ public class MetricsController {
         this.gitHubApiClient = gitHubApiClient;
     }
 
+    @Operation(summary = "Calculate DORA metrics", description = "Fetches GitHub data and calculates all 4 DORA metrics for the given repository")
     @GetMapping
     public ResponseEntity<MetricsResponse> getMetrics(
             @RequestParam String owner,
@@ -66,6 +70,7 @@ public class MetricsController {
         return builder.body(response);
     }
 
+    @Operation(summary = "Get metric history", description = "Returns historical snapshots for a single DORA metric")
     @GetMapping("/history")
     public ResponseEntity<MetricHistoryResponse> getHistory(
             @RequestParam String owner,
