@@ -19,6 +19,9 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 @Service
 public class MetricsService {
@@ -30,6 +33,7 @@ public class MetricsService {
     private final LeadTimeCalculator leadTimeCalculator;
     private final ChangeFailureRateCalculator changeFailureRateCalculator;
     private final MttrCalculator mttrCalculator;
+    private final Executor executor;
 
     public MetricsService(GitHubCacheService gitHubCacheService,
                           DeploymentFrequencyCalculator deploymentFrequencyCalculator,
@@ -41,22 +45,36 @@ public class MetricsService {
         this.leadTimeCalculator = leadTimeCalculator;
         this.changeFailureRateCalculator = changeFailureRateCalculator;
         this.mttrCalculator = mttrCalculator;
+        this.executor = Executors.newCachedThreadPool();
     }
 
     public MetricsResponse getMetrics(String owner, String repo, String token, int windowDays) {
         log.info("Calculating DORA metrics for {}/{} over {} days", owner, repo, windowDays);
         Instant windowStart = Instant.now().minus(windowDays, ChronoUnit.DAYS);
 
-        List<GithubDeployment> deployments =
-                gitHubCacheService.getDeployments(owner, repo, token, windowStart);
-        List<GithubRelease> releases =
-                gitHubCacheService.getReleases(owner, repo, token, windowStart);
-        List<GithubWorkflowRun> workflowRuns =
-                gitHubCacheService.getWorkflowRuns(owner, repo, token, windowStart);
-        List<GithubPullRequest> pullRequests =
-                gitHubCacheService.getPullRequests(owner, repo, token, windowStart);
-        List<GithubIssue> issues =
-                gitHubCacheService.getIssues(owner, repo, token, windowStart);
+        CompletableFuture<List<GithubDeployment>> deploymentsFuture = CompletableFuture
+                .supplyAsync(() -> gitHubCacheService.getDeployments(owner, repo, token, windowStart), executor)
+                .exceptionally(ex -> { throw new RuntimeException(ex); });
+        CompletableFuture<List<GithubRelease>> releasesFuture = CompletableFuture
+                .supplyAsync(() -> gitHubCacheService.getReleases(owner, repo, token, windowStart), executor)
+                .exceptionally(ex -> { throw new RuntimeException(ex); });
+        CompletableFuture<List<GithubWorkflowRun>> workflowRunsFuture = CompletableFuture
+                .supplyAsync(() -> gitHubCacheService.getWorkflowRuns(owner, repo, token, windowStart), executor)
+                .exceptionally(ex -> { throw new RuntimeException(ex); });
+        CompletableFuture<List<GithubPullRequest>> pullRequestsFuture = CompletableFuture
+                .supplyAsync(() -> gitHubCacheService.getPullRequests(owner, repo, token, windowStart), executor)
+                .exceptionally(ex -> { throw new RuntimeException(ex); });
+        CompletableFuture<List<GithubIssue>> issuesFuture = CompletableFuture
+                .supplyAsync(() -> gitHubCacheService.getIssues(owner, repo, token, windowStart), executor)
+                .exceptionally(ex -> { throw new RuntimeException(ex); });
+
+        CompletableFuture.allOf(deploymentsFuture, releasesFuture, workflowRunsFuture, pullRequestsFuture, issuesFuture).join();
+
+        List<GithubDeployment> deployments = deploymentsFuture.join();
+        List<GithubRelease> releases = releasesFuture.join();
+        List<GithubWorkflowRun> workflowRuns = workflowRunsFuture.join();
+        List<GithubPullRequest> pullRequests = pullRequestsFuture.join();
+        List<GithubIssue> issues = issuesFuture.join();
 
         MetricResult deployFreq = deploymentFrequencyCalculator.calculate(deployments, releases, workflowRuns, windowDays);
         MetricResult leadTime = leadTimeCalculator.calculate(pullRequests, deployments, windowDays);

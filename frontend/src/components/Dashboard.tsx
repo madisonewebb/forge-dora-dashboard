@@ -1,9 +1,12 @@
 import { useState, useCallback } from 'react'
 import { useMetrics } from '../hooks/useMetrics'
+import { useMetricHistory } from '../hooks/useMetricHistory'
 import MetricCard from './MetricCard'
 import SkeletonCard from './SkeletonCard'
 import ErrorBanner from './ErrorBanner'
 import InsightsPanel from './InsightsPanel'
+import TrendsPanel from './TrendsPanel'
+import CompareBar from './CompareBar'
 
 interface DashboardProps {
   owner: string
@@ -21,6 +24,10 @@ export default function Dashboard({ owner, repo, token, initialDays, onBack, onL
   const [days, setDays] = useState<number>(initialDays)
   const [dismissed, setDismissed] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const [compareActive, setCompareActive] = useState(false)
+  const [compareOwner, setCompareOwner] = useState<string | null>(null)
+  const [compareRepo, setCompareRepo] = useState<string | null>(null)
 
   const handleCopyLink = useCallback(() => {
     navigator.clipboard.writeText(window.location.href).then(() => {
@@ -28,7 +35,35 @@ export default function Dashboard({ owner, repo, token, initialDays, onBack, onL
       setTimeout(() => setCopied(false), 2000)
     })
   }, [])
+
+  const handleDownloadCsv = useCallback(async () => {
+    setDownloading(true)
+    try {
+      const res = await fetch(
+        `/api/export/csv?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&days=${days}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      if (!res.ok) return
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `dora-${owner}-${repo}-${new Date().toISOString().slice(0, 10)}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setDownloading(false)
+    }
+  }, [owner, repo, token, days])
+
   const { data, loading, error, rateLimit } = useMetrics({ owner, repo, token, days })
+  const { history } = useMetricHistory(owner, repo, token)
+  const { data: compareData } = useMetrics({
+    owner: compareOwner ?? '',
+    repo: compareRepo ?? '',
+    token,
+    days,
+  })
 
   function getErrorMessage(): string {
     if (!error) return ''
@@ -114,6 +149,45 @@ export default function Dashboard({ owner, repo, token, initialDays, onBack, onL
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)' }}
             >
               ← Change
+            </button>
+            <button
+              aria-label="Download CSV"
+              onClick={handleDownloadCsv}
+              disabled={downloading || loading}
+              style={{
+                background: 'none',
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                color: downloading ? 'var(--lime)' : 'var(--text-muted)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.6875rem',
+                letterSpacing: '0.06em',
+                padding: '0.25rem 0.625rem',
+                cursor: 'pointer',
+                transition: 'border-color 0.15s, color 0.15s',
+                opacity: loading ? 0.5 : 1,
+              }}
+              onMouseEnter={e => { if (!downloading) { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.color = 'var(--text)' } }}
+              onMouseLeave={e => { if (!downloading) { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)' } }}
+            >
+              {downloading ? 'Downloading…' : '⬇ CSV'}
+            </button>
+            <button
+              onClick={() => { setCompareActive(prev => !prev); if (compareActive) { setCompareOwner(null); setCompareRepo(null) } }}
+              style={{
+                background: compareActive ? 'rgba(0,212,168,0.1)' : 'none',
+                border: `1px solid ${compareActive ? 'rgba(0,212,168,0.3)' : 'var(--border)'}`,
+                borderRadius: 6,
+                color: compareActive ? '#00D4A8' : 'var(--text-muted)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.6875rem',
+                letterSpacing: '0.06em',
+                padding: '0.25rem 0.625rem',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              ⇄ Compare
             </button>
             <button
               onClick={handleCopyLink}
@@ -226,6 +300,17 @@ export default function Dashboard({ owner, repo, token, initialDays, onBack, onL
           </div>
         </div>
 
+        {/* Compare bar */}
+        {compareActive && (
+          <div style={{ marginBottom: '1rem' }}>
+            <CompareBar
+              onCompare={(o, r) => { setCompareOwner(o); setCompareRepo(r) }}
+              onClear={() => { setCompareOwner(null); setCompareRepo(null) }}
+              activeRepo={compareOwner && compareRepo ? `${compareOwner}/${compareRepo}` : null}
+            />
+          </div>
+        )}
+
         {/* Error banner */}
         {error && !dismissed && (
           <ErrorBanner message={getErrorMessage()} onDismiss={() => setDismissed(true)} />
@@ -246,13 +331,20 @@ export default function Dashboard({ owner, repo, token, initialDays, onBack, onL
             </>
           ) : (
             <>
-              <MetricCard title="Deployment Frequency" result={data.deploymentFrequency} chartType="line" />
-              <MetricCard title="Lead Time for Changes" result={data.leadTime} chartType="bar" />
-              <MetricCard title="Change Failure Rate" result={data.changeFailureRate} chartType="line" />
-              <MetricCard title="MTTR" result={data.mttr} chartType="bar" />
+              <MetricCard title="Deployment Frequency" result={data.deploymentFrequency} chartType="line"
+                compareResult={compareOwner && compareRepo && compareData ? compareData.deploymentFrequency : undefined} />
+              <MetricCard title="Lead Time for Changes" result={data.leadTime} chartType="bar"
+                compareResult={compareOwner && compareRepo && compareData ? compareData.leadTime : undefined} />
+              <MetricCard title="Change Failure Rate" result={data.changeFailureRate} chartType="line"
+                compareResult={compareOwner && compareRepo && compareData ? compareData.changeFailureRate : undefined} />
+              <MetricCard title="MTTR" result={data.mttr} chartType="bar"
+                compareResult={compareOwner && compareRepo && compareData ? compareData.mttr : undefined} />
             </>
           )}
         </div>
+
+        {/* Historical trends */}
+        <TrendsPanel history={history} />
 
         {/* AI Insights */}
         {data && !loading && (

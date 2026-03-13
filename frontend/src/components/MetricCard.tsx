@@ -10,6 +10,7 @@ interface MetricCardProps {
   result: MetricResult
   chartType: 'line' | 'bar'
   loading?: boolean
+  compareResult?: MetricResult
 }
 
 const BAND_COLORS: Record<DoraPerformanceBand, string> = {
@@ -26,7 +27,7 @@ const BAND_BG: Record<DoraPerformanceBand, string> = {
   LOW:    'rgba(255,91,91,0.1)',
 }
 
-export default function MetricCard({ title, result, chartType, loading }: MetricCardProps) {
+export default function MetricCard({ title, result, chartType, loading, compareResult }: MetricCardProps) {
   const [expanded, setExpanded] = useState(false)
   if (loading) return <SkeletonCard />
 
@@ -128,6 +129,68 @@ export default function MetricCard({ title, result, chartType, loading }: Metric
           />
         )}
       </div>
+
+      {/* Compare value */}
+      {compareResult && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          borderTop: '1px solid var(--border)',
+          paddingTop: '0.5rem',
+        }}>
+          <span style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '0.6875rem',
+            color: 'var(--text-muted)',
+            letterSpacing: '0.06em',
+          }}>vs</span>
+          {compareResult.dataAvailable ? (
+            <>
+              <span style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '1.25rem',
+                fontWeight: 600,
+                color: '#00D4A8',
+                lineHeight: 1,
+                letterSpacing: '-0.02em',
+              }}>
+                {compareResult.value?.toFixed(1)}
+              </span>
+              <span style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.6875rem',
+                color: 'var(--text-muted)',
+              }}>
+                {compareResult.unit}
+              </span>
+              {compareResult.band && (
+                <span style={{
+                  display: 'inline-block',
+                  background: 'rgba(0,212,168,0.1)',
+                  color: '#00D4A8',
+                  border: '1px solid rgba(0,212,168,0.2)',
+                  borderRadius: 4,
+                  padding: '1px 6px',
+                  fontFamily: 'var(--font-head)',
+                  fontSize: '0.625rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.15em',
+                  textTransform: 'uppercase',
+                }}>
+                  {compareResult.band}
+                </span>
+              )}
+            </>
+          ) : (
+            <span style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '0.75rem',
+              color: 'var(--text-muted)',
+            }}>No data</span>
+          )}
+        </div>
+      )}
 
       {/* Band badge */}
       {result.band && (
