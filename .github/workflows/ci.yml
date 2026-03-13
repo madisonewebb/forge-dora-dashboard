@@ -59,4 +59,4 @@ jobs:
       - name: Build backend image
         run: docker build -f Dockerfile.backend -t dora-backend:ci .
       - name: Build frontend image
-        run: docker build -f frontend/Dockerfile -t dora-frontend:ci .
+        run: docker build -f frontend/Dockerfile -t dora-frontend:ci frontend/
