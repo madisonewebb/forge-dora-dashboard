@@ -82,6 +82,9 @@ jobs:
           container-name: frontend
           image: ${{ steps.ecr-login.outputs.registry }}/dora-frontend:${{ github.event.workflow_run.head_sha }}
 
+      - name: Debug - print final task definition
+        run: cat ${{ steps.render-frontend.outputs.task-definition }}
+
       - name: Deploy to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
